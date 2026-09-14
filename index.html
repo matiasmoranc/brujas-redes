@@ -54,8 +54,8 @@
           <div class="field full"><label>Lugar</label><input id="matchPlace" placeholder="Ej: COMPLEJO MICROSULES"></div>
         </div>
         <div class="upcoming-actions"><button id="upcomingStory" class="secondary">Ver próximo partido</button><button id="startMatch" class="primary">Crear partido</button></div>
-        <div class="section-title">Diseños que se utilizarán</div>
-        <div id="presetChooser" class="preset-chooser"></div>
+        <div class="section-title">Diseño que se utilizará</div>
+        <div class="field"><label>Diseño para todas las historias</label><select id="presetChooser"></select></div>
       </div>
       <aside class="card preview-shell"><h2>Vista previa</h2><p class="sub">Así se verá la historia de inicio.</p><div class="phone"><div id="setupStory" class="story"></div></div></aside>
     </div>
@@ -66,13 +66,13 @@
       <div class="card">
         <h2>Editor de formatos</h2><p class="sub">Cada tipo de historia guarda su propio diseño. Los cambios se aplican a todas las historias nuevas de ese formato.</p>
         <div class="preset-bar">
-          <div class="field" style="margin-bottom:10px"><label>Tipo de historia</label><select id="formatSelect"></select></div>
           <div class="field"><label>Diseño guardado</label><select id="savedPresetSelect"></select></div>
           <div class="preset-actions"><input id="presetName" placeholder="Nombre del nuevo diseño"><button id="savePreset" class="primary">Crear diseño</button><button id="deletePreset" class="danger">Eliminar</button></div>
           <button id="updatePreset" class="secondary wide">Actualizar el diseño seleccionado</button>
         </div>
         <div id="designerControls" class="hidden">
         <div class="form-grid">
+          <div class="field"><label>Tipo de historia a editar</label><select id="formatSelect"></select></div>
           <div class="field"><label>Elemento a editar</label><select id="elementSelect"></select></div>
           <div class="field full"><label>Texto del título</label><input id="customTitle" placeholder="Título que aparecerá en la historia"></div>
           <div id="customContentField" class="field full hidden"><label>Contenido del texto agregado</label><input id="customContent" placeholder="Escribí el texto"></div>
@@ -221,13 +221,14 @@ function hydrateFormat(f){formats[f]=formats[f]||makeDefaults()[f];formats[f].el
 Object.keys(formatNames).forEach(f=>hydrateFormat(f));
 const fonts=['Arial','Anton','Bebas Neue','Oswald','Barlow Condensed','Montserrat','Roboto Condensed','Poppins','Impact','Georgia','Trebuchet MS','Verdana','Playfair Display','Times New Roman','Courier New','Tahoma'];
 let palette=JSON.parse(localStorage.getItem('brujasPalette')||'["#ff5a00","#090909","#ffffff","#1b5e20","#1565c0","#fbc02d"]');
-let savedPresets=JSON.parse(localStorage.getItem('brujasSavedPresets')||'{}'),activePresets=JSON.parse(localStorage.getItem('brujasActivePresets')||'{}');
-Object.keys(formatNames).forEach(f=>savedPresets[f]=savedPresets[f]||{});
+const oldPresets=JSON.parse(localStorage.getItem('brujasSavedPresets')||'{}'),oldActive=JSON.parse(localStorage.getItem('brujasActivePresets')||'{}');
+let savedDesigns=JSON.parse(localStorage.getItem('brujasDesigns')||'{}'),activeDesign=localStorage.getItem('brujasActiveDesign')||'';
+if(!Object.keys(savedDesigns).length){const names=new Set;Object.values(oldPresets).forEach(group=>Object.keys(group||{}).forEach(n=>names.add(n)));names.forEach(name=>{savedDesigns[name]={formats:{}};Object.keys(formatNames).forEach(f=>savedDesigns[name].formats[f]=JSON.parse(JSON.stringify(oldPresets[f]?.[name]||makeDefaults()[f]))) });activeDesign=Object.values(oldActive).find(n=>savedDesigns[n])||''}
 let editFormat='upcoming',editElement='title';
 const applicable={upcoming:['title','line','homeLogo','center','awayLogo','homeName','awayName','day','time','place'],start:['title','line','homeLogo','center','awayLogo','homeName','awayName'],goal:['title','line','homeLogo','center','awayLogo','homeName','awayName','detail'],halftime:['title','line','homeLogo','center','awayLogo','homeName','awayName'],secondhalf:['title','line','homeLogo','center','awayLogo','homeName','awayName'],final:['title','line','homeLogo','center','awayLogo','homeName','awayName']};
 const elementNames={title:'Título',line:'Línea naranja',homeLogo:'Escudo local',center:'VS / marcador',awayLogo:'Escudo visitante',homeName:'Nombre local',awayName:'Nombre visitante',detail:'Goleador y minuto',day:'Día',time:'Hora',place:'Lugar'};
 const applicableFor=f=>[...applicable[f],...Object.keys(formats[f].elements).filter(k=>k.startsWith('custom'))];
-const save=()=>{localStorage.setItem('brujasMatch',JSON.stringify(state));localStorage.setItem('brujasFormats',JSON.stringify(formats));localStorage.setItem('brujasPalette',JSON.stringify(palette));localStorage.setItem('brujasSavedPresets',JSON.stringify(savedPresets));localStorage.setItem('brujasActivePresets',JSON.stringify(activePresets))};
+const save=()=>{localStorage.setItem('brujasMatch',JSON.stringify(state));localStorage.setItem('brujasFormats',JSON.stringify(formats));localStorage.setItem('brujasPalette',JSON.stringify(palette));localStorage.setItem('brujasDesigns',JSON.stringify(savedDesigns));localStorage.setItem('brujasActiveDesign',activeDesign)};
 const esc=s=>String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const sampleEvent=f=>({type:f,title:titleDefaults[f],homeScore:f==='start'||f==='upcoming'?0:2,awayScore:f==='start'||f==='upcoming'?0:1,scorer:f==='goal'?'JUGADOR BRUJAS':'',minute:f==='goal'?'37':'',icon:'●'});
 function itemStyle(k,c){const e=c.elements[k];return `left:${e.x}%;top:${e.y}%;font-size:${e.size/10.8}cqw;color:${e.color};font-family:'${e.font}',sans-serif;font-weight:${e.weight};letter-spacing:${e.spacing/10.8}cqw`}
@@ -254,11 +255,10 @@ function render(){
  $('#timeline').innerHTML=state.events.length?state.events.slice().reverse().map((e,ri)=>`<div class="log"><div class="log-icon">${e.icon}</div><div class="log-info"><strong>${esc(e.title)}</strong><span>${esc(e.subtitle||'Historia generada')}</span></div><button data-story="${state.events.length-1-ri}">Ver</button></div>`).join(''):'<div class="timeline-empty">Acá aparecerán las historias generadas durante el partido.</div>';
  renderPresetChooser();renderDesigner();save()
 }
-function presetOptions(f){const names=Object.keys(savedPresets[f]);return '<option value="">Seleccioná un diseño</option>'+names.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('')}
-function activatePreset(f,name){if(name&&savedPresets[f][name]){formats[f]=JSON.parse(JSON.stringify(savedPresets[f][name]));hydrateFormat(f)}activePresets[f]=name;save();render()}
+function presetOptions(){const names=Object.keys(savedDesigns);return '<option value="">Seleccioná un diseño</option>'+names.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('')}
+function activateDesign(name){if(name&&savedDesigns[name]){formats=JSON.parse(JSON.stringify(savedDesigns[name].formats));Object.keys(formatNames).forEach(f=>hydrateFormat(f))}activeDesign=name;save();render()}
 function renderPresetChooser(){
- $('#presetChooser').innerHTML=Object.entries(formatNames).map(([f,label])=>`<div class="preset-choice"><label>${label}</label><select data-preset-format="${f}">${presetOptions(f)}</select></div>`).join('');
- $$('[data-preset-format]').forEach(s=>s.value=activePresets[s.dataset.presetFormat]||'')
+ $('#presetChooser').innerHTML=presetOptions();$('#presetChooser').value=savedDesigns[activeDesign]?activeDesign:''
 }
 function switchView(id){$$('.tab').forEach(x=>x.classList.toggle('active',x.dataset.view===id));$$('.view').forEach(x=>x.classList.toggle('active',x.id===id));scrollTo({top:0,behavior:'smooth'})}
 $$('.tab').forEach(b=>b.onclick=()=>switchView(b.dataset.view));
@@ -281,7 +281,7 @@ $('#newMatch').onclick=()=>{if(!confirm('¿Crear un partido nuevo?'))return;stat
 function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200)}
 function renderDesigner(){
  if(!$('#formatSelect').options.length)$('#formatSelect').innerHTML=Object.entries(formatNames).map(([k,v])=>`<option value="${k}">${v}</option>`).join('');
- $('#formatSelect').value=editFormat;$('#savedPresetSelect').innerHTML=presetOptions(editFormat);const selected=activePresets[editFormat]||'',hasDesign=!!(selected&&savedPresets[editFormat][selected]);$('#savedPresetSelect').value=hasDesign?selected:'';$('#designerControls').classList.toggle('hidden',!hasDesign);$('#designerPreview').classList.toggle('hidden',!hasDesign);$('#deletePreset').disabled=!hasDesign;$('#updatePreset').disabled=!hasDesign;if(!hasDesign)return;const els=applicableFor(editFormat);if(!els.includes(editElement))editElement=els[0];
+ $('#formatSelect').value=editFormat;$('#savedPresetSelect').innerHTML=presetOptions();const hasDesign=!!(activeDesign&&savedDesigns[activeDesign]);$('#savedPresetSelect').value=hasDesign?activeDesign:'';$('#designerControls').classList.toggle('hidden',!hasDesign);$('#designerPreview').classList.toggle('hidden',!hasDesign);$('#deletePreset').disabled=!hasDesign;$('#updatePreset').disabled=!hasDesign;if(!hasDesign)return;const els=applicableFor(editFormat);if(!els.includes(editElement))editElement=els[0];
  $('#elementSelect').innerHTML=els.map(k=>`<option value="${k}">${elementNames[k]||((formats[editFormat].elements[k].type==='line'?'Línea':'Texto')+' agregado') }</option>`).join('');$('#elementSelect').value=editElement;
  $('#customTitle').value=formats[editFormat].title;const e=formats[editFormat].elements[editElement];
  if(!$('#fontSelect').options.length)$('#fontSelect').innerHTML=fonts.map(f=>`<option value="${f}" style="font-family:'${f}'">${f}</option>`).join('');
@@ -290,11 +290,11 @@ function renderDesigner(){
  $('#designerStory').innerHTML=storyHTML(sampleEvent(editFormat))
 }
 $('#formatSelect').onchange=e=>{editFormat=e.target.value;editElement=applicableFor(editFormat)[0];renderDesigner()};$('#elementSelect').onchange=e=>{editElement=e.target.value;renderDesigner()};
-$('#presetChooser').onchange=e=>{const f=e.target.dataset.presetFormat;if(f!==undefined)activatePreset(f,e.target.value)};
-$('#savedPresetSelect').onchange=e=>{activatePreset(editFormat,e.target.value);editElement='title';renderDesigner()};
-$('#savePreset').onclick=()=>{const name=$('#presetName').value.trim();if(!name)return toast('Escribí un nombre para el diseño');if(savedPresets[editFormat][name]&&!confirm('Ya existe un diseño con ese nombre. ¿Reemplazarlo?'))return;savedPresets[editFormat][name]=JSON.parse(JSON.stringify(formats[editFormat]));activePresets[editFormat]=name;$('#presetName').value='';save();render();toast('Diseño guardado')};
-$('#updatePreset').onclick=()=>{const name=$('#savedPresetSelect').value;if(!name)return toast('Seleccioná un diseño guardado');savedPresets[editFormat][name]=JSON.parse(JSON.stringify(formats[editFormat]));save();render();toast('Diseño actualizado')};
-$('#deletePreset').onclick=()=>{const name=$('#savedPresetSelect').value;if(!name)return toast('Seleccioná un diseño guardado');if(!confirm(`¿Eliminar el diseño "${name}"?`))return;delete savedPresets[editFormat][name];if(activePresets[editFormat]===name)activePresets[editFormat]='';save();render();toast('Diseño eliminado')};
+$('#presetChooser').onchange=e=>activateDesign(e.target.value);
+$('#savedPresetSelect').onchange=e=>{activateDesign(e.target.value);editElement='title';renderDesigner()};
+$('#savePreset').onclick=()=>{const name=$('#presetName').value.trim();if(!name)return toast('Escribí un nombre para el diseño');if(savedDesigns[name]&&!confirm('Ya existe un diseño con ese nombre. ¿Reemplazarlo?'))return;savedDesigns[name]={formats:JSON.parse(JSON.stringify(formats))};activeDesign=name;$('#presetName').value='';save();render();toast('Diseño completo guardado')};
+$('#updatePreset').onclick=()=>{if(!activeDesign||!savedDesigns[activeDesign])return toast('Seleccioná un diseño guardado');savedDesigns[activeDesign].formats=JSON.parse(JSON.stringify(formats));save();render();toast('Diseño actualizado')};
+$('#deletePreset').onclick=()=>{if(!activeDesign||!savedDesigns[activeDesign])return toast('Seleccioná un diseño guardado');if(!confirm(`¿Eliminar el diseño "${activeDesign}"?`))return;delete savedDesigns[activeDesign];activeDesign='';save();render();toast('Diseño eliminado')};
 $('#customTitle').oninput=e=>{formats[editFormat].title=e.target.value;renderDesigner()};
 $('#customContent').oninput=e=>{formats[editFormat].elements[editElement].content=e.target.value;renderDesigner()};
 function addCustom(type){const key='custom'+Date.now();formats[editFormat].elements[key]={type,x:50,y:type==='line'?78:75,size:type==='line'?220:38,font:'Arial',weight:700,spacing:0,color:type==='line'?'#ff5a00':'#090909',content:type==='text'?'NUEVO TEXTO':''};editElement=key;save();renderDesigner();toast(type==='line'?'Línea agregada':'Texto agregado')}
@@ -309,7 +309,7 @@ $('#palette').onclick=e=>{if(e.target.dataset.color){$('#colorPicker').value=e.t
 $('#colorPicker').oninput=renderPalette;
 $('#addColor').onclick=()=>{const c=$('#colorPicker').value.toLowerCase();if(!palette.includes(c))palette.push(c);save();renderPalette();toast('Color guardado')};
 $('#applyColor').onclick=()=>{const scope=$('#colorScope').value,color=$('#colorPicker').value;if(scope==='element')formats[editFormat].elements[editElement].color=color;else targets(scope,true).forEach(x=>x.color=color);save();renderDesigner();toast('Color aplicado')};
-$('#saveFormat').onclick=()=>{const name=activePresets[editFormat];if(!name||!savedPresets[editFormat][name])return toast('Seleccioná un diseño guardado');savedPresets[editFormat][name]=JSON.parse(JSON.stringify(formats[editFormat]));save();render();toast('Diseño guardado')};$('#resetFormat').onclick=()=>{if(!confirm('¿Restaurar este formato al diseño original?'))return;formats[editFormat]=makeDefaults()[editFormat];Object.entries(formats[editFormat].elements).forEach(([k,e])=>{e.font='Arial';e.color=defaultColor(k);e.weight=defaultWeight(k);e.spacing=0});render();toast('Formato restaurado')};
+$('#saveFormat').onclick=()=>{if(!activeDesign||!savedDesigns[activeDesign])return toast('Seleccioná un diseño guardado');savedDesigns[activeDesign].formats=JSON.parse(JSON.stringify(formats));save();render();toast('Diseño completo guardado')};$('#resetFormat').onclick=()=>{if(!confirm('¿Restaurar este tipo de historia al diseño original?'))return;formats[editFormat]=makeDefaults()[editFormat];Object.entries(formats[editFormat].elements).forEach(([k,e])=>{e.font='Arial';e.color=defaultColor(k);e.weight=defaultWeight(k);e.spacing=0});render();toast('Tipo de historia restaurado')};
 const imgLoad=src=>new Promise(ok=>{if(!src)return ok(null);const i=new Image;i.onload=()=>ok(i);i.onerror=()=>ok(null);i.src=src});
 function drawContain(ctx,img,x,y,size){const r=Math.min(size/img.width,size/img.height),w=img.width*r,h=img.height*r;ctx.drawImage(img,x-w/2,y-h/2,w,h)}
 function drawText(ctx,text,e){ctx.fillStyle=e.color;ctx.font=`${e.weight||700} ${e.size}px "${e.font}"`;ctx.letterSpacing=(e.spacing||0)+'px';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(text,e.x*10.8,e.y*19.2);ctx.letterSpacing='0px'}
