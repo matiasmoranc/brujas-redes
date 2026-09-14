@@ -147,7 +147,7 @@ function storyHTML(ev,interactive=false){
   if(f==='goal'){
    h+=`<div class="story-item story-detail${editClass('minute',interactive)}" data-element="${interactive?'minute':''}" style="${itemStyle('minute',c)}">MIN ${esc(ev.minute||37)}'</div>`;
    if(ev.side==='home'){
-    h+=`<div class="story-item story-detail${editClass('scorer',interactive)}" data-element="${interactive?'scorer':''}" style="${itemStyle('scorer',c)}">${esc(ev.scorer||'JUGADOR BRUJAS')}</div><div class="story-item story-detail${editClass('goalText',interactive)}" data-element="${interactive?'goalText':''}" style="${itemStyle('goalText',c)}">GOOOL!!</div>`
+    h+=`<div class="story-item story-detail${editClass('scorer',interactive)}" data-element="${interactive?'scorer':''}" style="${itemStyle('scorer',c)}">⚽︎&nbsp;&nbsp;${esc(ev.scorer||'JUGADOR BRUJAS')}</div><div class="story-item story-detail${editClass('goalText',interactive)}" data-element="${interactive?'goalText':''}" style="${itemStyle('goalText',c)}">GOOOL!!</div>`
    }
   }
  }else{
@@ -355,7 +355,7 @@ async function buildStoryImage(event=selectedEvent){
   if(f==='goal'){
    drawText(x,`MIN ${ev.minute}'`,cfg.elements.minute);
    if(ev.side==='home'){
-    drawText(x,(ev.scorer||'JUGADOR BRUJAS').toUpperCase(),cfg.elements.scorer);
+    drawText(x,`⚽︎  ${(ev.scorer||'JUGADOR BRUJAS').toUpperCase()}`,cfg.elements.scorer);
     drawText(x,'GOOOL!!',cfg.elements.goalText)
    }
   }
