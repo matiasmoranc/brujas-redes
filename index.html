@@ -322,6 +322,12 @@ function goalPeriod(ev){
  const previous=index<0?state.events:state.events.slice(0,index+1);
  return previous.some(item=>item.type==='secondhalf')?'SEGUNDO TIEMPO':'PRIMER TIEMPO'
 }
+function storyIcon(type){
+ const common='viewBox="0 0 24 24" width="1em" height="1em" aria-hidden="true" style="vertical-align:-.14em;margin-right:.38em" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"';
+ return type==='calendar'
+  ?`<svg ${common}><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>`
+  :`<svg ${common}><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>`
+}
 function storyHTML(ev,interactive=false){
  const f=formatNames[ev.type]?ev.type:'start',c=formats[f],eventScore=scoreForEvent(ev),score=`${eventScore.home}–${eventScore.away}`,mid=(f==='start'||f==='upcoming')?'VS':score,isScoreboard=f==='goal'||resultFormats.includes(f);
  const heading=f==='goal'?goalPeriod(ev):c.title;
@@ -338,7 +344,7 @@ function storyHTML(ev,interactive=false){
  }else{
   h+=`<div class="story-item story-name story-home-name${editClass('homeName',interactive)}" data-element="${interactive?'homeName':''}" style="${itemStyle('homeName',c)}">${esc(state.homeName||'LOCAL')}</div><div class="story-item story-name${editClass('awayName',interactive)}" data-element="${interactive?'awayName':''}" style="${itemStyle('awayName',c)}">${esc(state.awayName||'VISITANTE')}</div>`
  }
- if(f==='upcoming')h+=`<div class="story-item story-detail${editClass('day',interactive)}" data-element="${interactive?'day':''}" style="${itemStyle('day',c)}">▣ &nbsp;${esc(state.matchDay||'DÍA')}</div><div class="story-item story-detail${editClass('time',interactive)}" data-element="${interactive?'time':''}" style="${itemStyle('time',c)}">◷ &nbsp;${esc(state.matchTime||'HORA')}</div><div class="story-item story-detail${editClass('place',interactive)}" data-element="${interactive?'place':''}" style="${itemStyle('place',c)}">${esc(state.matchPlace||'LUGAR')}</div>`;
+ if(f==='upcoming')h+=`<div class="story-item story-detail${editClass('day',interactive)}" data-element="${interactive?'day':''}" style="${itemStyle('day',c)}">${storyIcon('calendar')}${esc(state.matchDay||'DÍA')}</div><div class="story-item story-detail${editClass('time',interactive)}" data-element="${interactive?'time':''}" style="${itemStyle('time',c)}">${storyIcon('clock')}${esc(state.matchTime||'HORA')}</div><div class="story-item story-detail${editClass('place',interactive)}" data-element="${interactive?'place':''}" style="${itemStyle('place',c)}">${esc(state.matchPlace||'LUGAR')}</div>`;
  Object.keys(c.elements).filter(k=>k.startsWith('custom')).forEach(k=>{const e=c.elements[k],at=interactive?` data-element="${k}"`:'';h+=e.type==='line'?`<div class="story-item story-line${editClass(k,interactive)}" ${at} style="left:${e.x}%;top:${e.y}%;width:${e.size/10.8}cqw;height:${e.height/10.8}cqw;background:${e.color}"></div>`:`<div class="story-item story-detail${editClass(k,interactive)}" ${at} style="${itemStyle(k,c)}">${esc(e.content||'TEXTO')}</div>`});
  if(interactive&&floatingOpen)h+=floatingEditor(c);
  return h
@@ -506,6 +512,17 @@ $('#saveFormat').onclick=()=>{if(!activeDesign||!savedDesigns[activeDesign])retu
 const imgLoad=src=>new Promise(ok=>{if(!src)return ok(null);const i=new Image;i.onload=()=>ok(i);i.onerror=()=>ok(null);i.src=src});
 function drawContain(ctx,img,x,y,size){const r=Math.min(size/img.width,size/img.height),w=img.width*r,h=img.height*r;ctx.drawImage(img,x-w/2,y-h/2,w,h)}
 function drawText(ctx,text,e){ctx.fillStyle=e.color;ctx.font=`${e.weight||700} ${e.size}px "${e.font}"`;ctx.letterSpacing=(e.spacing||0)+'px';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(text,e.x*10.8,e.y*19.2);ctx.letterSpacing='0px'}
+function drawTextWithIcon(ctx,text,e,type){
+ ctx.save();ctx.fillStyle=e.color;ctx.strokeStyle=e.color;ctx.lineWidth=Math.max(2,e.size*.055);ctx.font=`${e.weight||700} ${e.size}px "${e.font}"`;ctx.letterSpacing=(e.spacing||0)+'px';ctx.textBaseline='middle';
+ const icon=e.size*.72,gap=e.size*.3,textWidth=ctx.measureText(text).width,total=icon+gap+textWidth,left=e.x*10.8-total/2,cy=e.y*19.2;
+ ctx.beginPath();
+ if(type==='calendar'){
+  ctx.roundRect(left,cy-icon*.45,icon,icon*.9,icon*.1);ctx.moveTo(left,cy-icon*.12);ctx.lineTo(left+icon,cy-icon*.12);ctx.moveTo(left+icon*.28,cy-icon*.58);ctx.lineTo(left+icon*.28,cy-icon*.34);ctx.moveTo(left+icon*.72,cy-icon*.58);ctx.lineTo(left+icon*.72,cy-icon*.34)
+ }else{
+  ctx.arc(left+icon/2,cy,icon*.45,0,Math.PI*2);ctx.moveTo(left+icon/2,cy-icon*.23);ctx.lineTo(left+icon/2,cy);ctx.lineTo(left+icon*.7,cy+icon*.12)
+ }
+ ctx.stroke();ctx.textAlign='left';ctx.fillText(text,left+icon+gap,cy);ctx.restore()
+}
 async function buildStoryImage(event=selectedEvent){
  if(!event)return null;
  const ev=event,f=ev.type,cfg=formats[f],c=$('#canvas'),x=c.getContext('2d');
@@ -535,8 +552,8 @@ async function buildStoryImage(event=selectedEvent){
   drawText(x,(state.homeName||'LOCAL').toUpperCase(),cfg.elements.homeName);
   drawText(x,(state.awayName||'VISITANTE').toUpperCase(),cfg.elements.awayName);
   if(f==='upcoming'){
-   drawText(x,'▣  '+(state.matchDay||'DÍA').toUpperCase(),cfg.elements.day);
-   drawText(x,'◷  '+(state.matchTime||'HORA').toUpperCase(),cfg.elements.time);
+   drawTextWithIcon(x,(state.matchDay||'DÍA').toUpperCase(),cfg.elements.day,'calendar');
+   drawTextWithIcon(x,(state.matchTime||'HORA').toUpperCase(),cfg.elements.time,'clock');
    drawText(x,(state.matchPlace||'LUGAR').toUpperCase(),cfg.elements.place)
   }
  }
