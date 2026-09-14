@@ -12,11 +12,13 @@ const firebaseConfig={
 const db=getFirestore(initializeApp(firebaseConfig));
 const sharedRef=doc(db,"shared","brujas-redes");
 const status=document.getElementById("syncStatus");
-let lastCloudJson="",saveTimer=null,applyingCloud=false;
+let lastCloudJson="",saveTimer=null,applyingCloud=false,cloudReady=false,pendingSave=false;
+window.brujasCloudReady=false;
 const payload=()=>window.getBrujasCloudData();
 const setStatus=(text,error=false)=>{if(!status)return;status.lastChild.textContent=text;status.style.color=error?"#ff9696":"";const dot=status.querySelector("i");if(dot)dot.style.background=error?"#ff5d5d":""};
 window.queueBrujasCloudSave=()=>{
  if(applyingCloud)return;
+ if(!cloudReady){pendingSave=true;setStatus("Cargando datos…");return}
  clearTimeout(saveTimer);
  saveTimer=setTimeout(async()=>{
   const data=payload(),json=JSON.stringify(data);
@@ -32,9 +34,12 @@ onSnapshot(sharedRef,snapshot=>{
   const data={state:raw.state,formats:raw.formats,palette:raw.palette,savedDesigns:raw.savedDesigns,activeDesign:raw.activeDesign,teams:raw.teams};
   const json=JSON.stringify(data);
   if(json!==lastCloudJson){lastCloudJson=json;applyingCloud=true;window.applyBrujasCloudData(data);applyingCloud=false}
+  pendingSave=false;cloudReady=true;window.brujasCloudReady=true;
+  window.dispatchEvent(new CustomEvent("brujas-cloud-ready"));
   setStatus("Sincronizado")
  }else{
-  lastCloudJson="";
+  lastCloudJson="";cloudReady=true;window.brujasCloudReady=true;
+  window.dispatchEvent(new CustomEvent("brujas-cloud-ready"));
   window.queueBrujasCloudSave()
  }
-},error=>{console.error("No se pudo leer Firestore",error);setStatus("Sin conexión con la nube",true)});
+},error=>{console.error("No se pudo leer Firestore",error);pendingSave=false;setStatus("Sin conexión con la nube",true)});
