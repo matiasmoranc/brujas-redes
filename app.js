@@ -335,7 +335,7 @@ function drawTextWithIcon(ctx,text,e,type){
 async function buildStoryImage(event=selectedEvent){
  if(!event)return null;
  const ev={...event},f=ev.type,cfg=JSON.parse(JSON.stringify(formats[f]));
- const storyState={homeName:storyState.homeName,awayName:storyState.awayName,homeLogo:state.homeLogo,awayLogo:state.awayLogo,matchDay:storyState.matchDay,matchTime:storyState.matchTime,matchPlace:storyState.matchPlace};
+ const storyState={homeName:state.homeName,awayName:state.awayName,homeLogo:state.homeLogo,awayLogo:state.awayLogo,matchDay:state.matchDay,matchTime:state.matchTime,matchPlace:state.matchPlace};
  const eventScore=scoreForEvent(event),periodTitle=goalPeriod(event);
  const c=document.createElement('canvas');c.width=1080;c.height=1920;
  const x=c.getContext('2d');
