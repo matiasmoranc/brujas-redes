@@ -18,6 +18,8 @@
     @media(max-width:760px){.app{padding:16px 12px 80px}.setup-grid,.live-grid,.designer-grid{grid-template-columns:1fr}.preview-shell{position:static}.card{padding:17px}.form-grid{grid-template-columns:1fr}.field.full{grid-column:auto}.top .status{display:none}.tabs{width:100%}.tab{flex:1;padding:10px 5px;font-size:11px}.preview-shell{order:-1}.phone{max-width:230px}.event-grid{grid-template-columns:1fr 1fr}.editor-row{grid-template-columns:105px 1fr 45px}.story-title{letter-spacing:.12em}}
     .story{container-type:inline-size}.style-controls{margin-top:18px;padding-top:18px;border-top:1px solid var(--line)}.color-tools{display:grid;grid-template-columns:1fr auto;gap:9px}.color-tools input[type=color]{height:46px;padding:5px}.palette{display:flex;flex-wrap:wrap;gap:9px;margin-top:12px}.swatch{width:34px;height:34px;border-radius:50%;border:3px solid #344139;box-shadow:0 0 0 1px #ffffff25;position:relative}.swatch.active:after{content:"✓";position:absolute;inset:0;display:grid;place-items:center;color:white;text-shadow:0 1px 4px #000;font-weight:900}.apply-style{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
     .add-elements{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin:12px 0 18px}.add-elements button{padding:11px 12px}.hidden{display:none!important}
+    .preset-bar{background:#0c110e;border:1px solid var(--line);border-radius:16px;padding:15px;margin:0 0 18px}.preset-actions{display:grid;grid-template-columns:1fr auto auto;gap:8px;margin-top:9px}.preset-actions button{padding:11px}.preset-chooser{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.preset-choice{background:#0c110e;border:1px solid var(--line);border-radius:12px;padding:10px}.preset-choice label{display:block;margin-bottom:7px}
+    @media(max-width:520px){.preset-chooser{grid-template-columns:1fr}.preset-actions{grid-template-columns:1fr 1fr}.preset-actions input{grid-column:1/-1}}
   </style>
 </head>
 <body>
@@ -49,6 +51,8 @@
           <div class="field full"><label>Lugar</label><input id="matchPlace" placeholder="Ej: COMPLEJO MICROSULES"></div>
         </div>
         <div class="upcoming-actions"><button id="upcomingStory" class="secondary">Ver próximo partido</button><button id="startMatch" class="primary">Crear partido</button></div>
+        <div class="section-title">Diseños que se utilizarán</div>
+        <div id="presetChooser" class="preset-chooser"></div>
       </div>
       <aside class="card preview-shell"><h2>Vista previa</h2><p class="sub">Así se verá la historia de inicio.</p><div class="phone"><div id="setupStory" class="story"></div></div></aside>
     </div>
@@ -58,6 +62,11 @@
     <div class="designer-grid">
       <div class="card">
         <h2>Editor de formatos</h2><p class="sub">Cada tipo de historia guarda su propio diseño. Los cambios se aplican a todas las historias nuevas de ese formato.</p>
+        <div class="preset-bar">
+          <div class="field"><label>Diseño guardado</label><select id="savedPresetSelect"></select></div>
+          <div class="preset-actions"><input id="presetName" placeholder="Nombre del nuevo diseño"><button id="savePreset" class="primary">Guardar copia</button><button id="deletePreset" class="danger">Eliminar</button></div>
+          <button id="updatePreset" class="secondary wide">Actualizar el diseño seleccionado</button>
+        </div>
         <div class="form-grid">
           <div class="field"><label>Formato de historia</label><select id="formatSelect"></select></div>
           <div class="field"><label>Elemento a editar</label><select id="elementSelect"></select></div>
@@ -204,11 +213,13 @@ const defaultColor=k=>k==='line'||k==='homeName'?'#ff5a00':'#090909';
 Object.keys(formatNames).forEach(f=>{formats[f]=formats[f]||makeDefaults()[f];formats[f].elements={...JSON.parse(JSON.stringify(baseElements)),...formats[f].elements};Object.entries(formats[f].elements).forEach(([k,e])=>{e.font=e.font||'Arial';e.color=e.color||defaultColor(k)})});
 const fonts=['Arial','Impact','Georgia','Trebuchet MS','Verdana','Times New Roman','Courier New','Tahoma'];
 let palette=JSON.parse(localStorage.getItem('brujasPalette')||'["#ff5a00","#090909","#ffffff","#1b5e20","#1565c0","#fbc02d"]');
+let savedPresets=JSON.parse(localStorage.getItem('brujasSavedPresets')||'{}'),activePresets=JSON.parse(localStorage.getItem('brujasActivePresets')||'{}');
+Object.keys(formatNames).forEach(f=>savedPresets[f]=savedPresets[f]||{});
 let editFormat='upcoming',editElement='title';
 const applicable={upcoming:['title','line','homeLogo','center','awayLogo','homeName','awayName','day','time','place'],start:['title','line','homeLogo','center','awayLogo','homeName','awayName'],goal:['title','line','homeLogo','center','awayLogo','homeName','awayName','detail'],halftime:['title','line','homeLogo','center','awayLogo','homeName','awayName'],secondhalf:['title','line','homeLogo','center','awayLogo','homeName','awayName'],final:['title','line','homeLogo','center','awayLogo','homeName','awayName']};
 const elementNames={title:'Título',line:'Línea naranja',homeLogo:'Escudo local',center:'VS / marcador',awayLogo:'Escudo visitante',homeName:'Nombre local',awayName:'Nombre visitante',detail:'Goleador y minuto',day:'Día',time:'Hora',place:'Lugar'};
 const applicableFor=f=>[...applicable[f],...Object.keys(formats[f].elements).filter(k=>k.startsWith('custom'))];
-const save=()=>{localStorage.setItem('brujasMatch',JSON.stringify(state));localStorage.setItem('brujasFormats',JSON.stringify(formats));localStorage.setItem('brujasPalette',JSON.stringify(palette))};
+const save=()=>{localStorage.setItem('brujasMatch',JSON.stringify(state));localStorage.setItem('brujasFormats',JSON.stringify(formats));localStorage.setItem('brujasPalette',JSON.stringify(palette));localStorage.setItem('brujasSavedPresets',JSON.stringify(savedPresets));localStorage.setItem('brujasActivePresets',JSON.stringify(activePresets))};
 const esc=s=>String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const sampleEvent=f=>({type:f,title:titleDefaults[f],homeScore:f==='start'||f==='upcoming'?0:2,awayScore:f==='start'||f==='upcoming'?0:1,scorer:f==='goal'?'JUGADOR BRUJAS':'',minute:f==='goal'?'37':'',icon:'●'});
 function itemStyle(k,c){const e=c.elements[k];return `left:${e.x}%;top:${e.y}%;font-size:${e.size/10.8}cqw;color:${e.color};font-family:'${e.font}',sans-serif`}
@@ -233,7 +244,13 @@ function render(){
  $('#liveHomeLogo').innerHTML=state.homeLogo?`<img class="crest" src="${state.homeLogo}">`:'<div class="crest-fallback">LOCAL</div>';$('#liveAwayLogo').innerHTML=state.awayLogo?`<img class="crest" src="${state.awayLogo}">`:'<div class="crest-fallback">VISITA</div>';
  $('#homeScore').textContent=state.homeScore;$('#awayScore').textContent=state.awayScore;$('#phase').textContent=state.phase;
  $('#timeline').innerHTML=state.events.length?state.events.slice().reverse().map((e,ri)=>`<div class="log"><div class="log-icon">${e.icon}</div><div class="log-info"><strong>${esc(e.title)}</strong><span>${esc(e.subtitle||'Historia generada')}</span></div><button data-story="${state.events.length-1-ri}">Ver</button></div>`).join(''):'<div class="timeline-empty">Acá aparecerán las historias generadas durante el partido.</div>';
- renderDesigner();save()
+ renderPresetChooser();renderDesigner();save()
+}
+function presetOptions(f){const names=Object.keys(savedPresets[f]);return '<option value="">Diseño actual</option>'+names.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('')}
+function activatePreset(f,name){if(name&&savedPresets[f][name])formats[f]=JSON.parse(JSON.stringify(savedPresets[f][name]));activePresets[f]=name;save();render()}
+function renderPresetChooser(){
+ $('#presetChooser').innerHTML=Object.entries(formatNames).map(([f,label])=>`<div class="preset-choice"><label>${label}</label><select data-preset-format="${f}">${presetOptions(f)}</select></div>`).join('');
+ $$('[data-preset-format]').forEach(s=>s.value=activePresets[s.dataset.presetFormat]||'')
 }
 function switchView(id){$$('.tab').forEach(x=>x.classList.toggle('active',x.dataset.view===id));$$('.view').forEach(x=>x.classList.toggle('active',x.id===id));scrollTo({top:0,behavior:'smooth'})}
 $$('.tab').forEach(b=>b.onclick=()=>switchView(b.dataset.view));
@@ -256,7 +273,7 @@ $('#newMatch').onclick=()=>{if(!confirm('¿Crear un partido nuevo?'))return;stat
 function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200)}
 function renderDesigner(){
  if(!$('#formatSelect').options.length)$('#formatSelect').innerHTML=Object.entries(formatNames).map(([k,v])=>`<option value="${k}">${v}</option>`).join('');
- $('#formatSelect').value=editFormat;const els=applicableFor(editFormat);if(!els.includes(editElement))editElement=els[0];
+ $('#formatSelect').value=editFormat;$('#savedPresetSelect').innerHTML=presetOptions(editFormat);$('#savedPresetSelect').value=activePresets[editFormat]||'';const els=applicableFor(editFormat);if(!els.includes(editElement))editElement=els[0];
  $('#elementSelect').innerHTML=els.map(k=>`<option value="${k}">${elementNames[k]||((formats[editFormat].elements[k].type==='line'?'Línea':'Texto')+' agregado') }</option>`).join('');$('#elementSelect').value=editElement;
  $('#customTitle').value=formats[editFormat].title;const e=formats[editFormat].elements[editElement];
  if(!$('#fontSelect').options.length)$('#fontSelect').innerHTML=fonts.map(f=>`<option value="${f}" style="font-family:'${f}'">${f}</option>`).join('');
@@ -265,6 +282,11 @@ function renderDesigner(){
  $('#designerStory').innerHTML=storyHTML(sampleEvent(editFormat))
 }
 $('#formatSelect').onchange=e=>{editFormat=e.target.value;editElement=applicableFor(editFormat)[0];renderDesigner()};$('#elementSelect').onchange=e=>{editElement=e.target.value;renderDesigner()};
+$('#presetChooser').onchange=e=>{const f=e.target.dataset.presetFormat;if(f!==undefined)activatePreset(f,e.target.value)};
+$('#savedPresetSelect').onchange=e=>{activatePreset(editFormat,e.target.value);editElement='title';renderDesigner()};
+$('#savePreset').onclick=()=>{const name=$('#presetName').value.trim();if(!name)return toast('Escribí un nombre para el diseño');if(savedPresets[editFormat][name]&&!confirm('Ya existe un diseño con ese nombre. ¿Reemplazarlo?'))return;savedPresets[editFormat][name]=JSON.parse(JSON.stringify(formats[editFormat]));activePresets[editFormat]=name;$('#presetName').value='';save();render();toast('Diseño guardado')};
+$('#updatePreset').onclick=()=>{const name=$('#savedPresetSelect').value;if(!name)return toast('Seleccioná un diseño guardado');savedPresets[editFormat][name]=JSON.parse(JSON.stringify(formats[editFormat]));save();render();toast('Diseño actualizado')};
+$('#deletePreset').onclick=()=>{const name=$('#savedPresetSelect').value;if(!name)return toast('Seleccioná un diseño guardado');if(!confirm(`¿Eliminar el diseño "${name}"?`))return;delete savedPresets[editFormat][name];if(activePresets[editFormat]===name)activePresets[editFormat]='';save();render();toast('Diseño eliminado')};
 $('#customTitle').oninput=e=>{formats[editFormat].title=e.target.value;renderDesigner()};
 $('#customContent').oninput=e=>{formats[editFormat].elements[editElement].content=e.target.value;renderDesigner()};
 function addCustom(type){const key='custom'+Date.now();formats[editFormat].elements[key]={type,x:50,y:type==='line'?78:75,size:type==='line'?220:38,font:'Arial',color:type==='line'?'#ff5a00':'#090909',content:type==='text'?'NUEVO TEXTO':''};editElement=key;save();renderDesigner();toast(type==='line'?'Línea agregada':'Texto agregado')}
