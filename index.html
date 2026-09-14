@@ -351,7 +351,7 @@ function render(){
  $('#setupStory').innerHTML=storyHTML(sampleEvent('upcoming'));
  $('#liveHomeName').textContent=state.homeName||'Local';$('#liveAwayName').textContent=state.awayName||'Visitante';
  $('#liveHomeLogo').innerHTML=state.homeLogo?`<img class="crest" src="${state.homeLogo}">`:'<div class="crest-fallback">LOCAL</div>';$('#liveAwayLogo').innerHTML=state.awayLogo?`<img class="crest" src="${state.awayLogo}">`:'<div class="crest-fallback">VISITA</div>';
- $('#homeScore').textContent=state.homeScore;$('#awayScore').textContent=state.awayScore;$('#phase').textContent=state.phase;updateTimerDisplay();
+ state.phase=phaseFromEvents();$('#homeScore').textContent=state.homeScore;$('#awayScore').textContent=state.awayScore;$('#phase').textContent=state.phase;updateTimerDisplay();
  $('#timeline').innerHTML=state.events.length?state.events.slice().reverse().map((e,ri)=>{const index=state.events.length-1-ri;return `<div class="log"><div class="log-icon">${e.icon}</div><div class="log-info"><strong>${esc(e.title)}</strong><span>${esc(e.subtitle||'Historia generada')}</span></div><div class="log-actions"><button data-story="${index}">Ver</button><button data-undo="${index}">Deshacer</button></div></div>`}).join(''):'<div class="timeline-empty">Acá aparecerán las historias generadas durante el partido.</div>';
  renderPresetChooser();renderDesigner();renderTeams();save()
 }
@@ -431,11 +431,17 @@ async function openStory(ev){
   preview.classList.add('rendered-story')
  }catch(error){console.error('No se pudo generar la vista previa exacta',error)}
 }
+function phaseFromEvents(){
+ const last=state.events.at(-1);
+ if(!last)return 'Partido sin iniciar';
+ if(last.type==='final')return 'Finalizado';
+ if(last.type==='halftime')return 'Entretiempo';
+ return state.events.some(event=>event.type==='secondhalf')?'En juego - Segundo tiempo':'En juego - Primer tiempo'
+}
 function recalculateMatch(){
  state.homeScore=state.events.filter(e=>e.type==='goal'&&e.side==='home').length;
  state.awayScore=state.events.filter(e=>e.type==='goal'&&e.side==='away').length;
- const last=state.events.at(-1);
- state.phase=last?({start:'En juego',goal:'En juego',halftime:'Entretiempo',secondhalf:'Segundo tiempo',final:'Finalizado'}[last.type]||'En juego'):'Partido sin iniciar'
+ state.phase=phaseFromEvents()
 }
 $('#timeline').onclick=e=>{if(e.target.dataset.story!==undefined)openStory(state.events[+e.target.dataset.story]);if(e.target.dataset.undo!==undefined){const index=+e.target.dataset.undo,event=state.events[index];if(!event)return;state.events.splice(index,1);recalculateMatch();render();toast('Evento deshecho')}};
 const closeModals=()=>$$('.modal').forEach(m=>m.classList.remove('open'));$$('[data-close]').forEach(b=>b.onclick=closeModals);$$('.modal').forEach(m=>m.onclick=e=>{if(e.target===m)closeModals()});
