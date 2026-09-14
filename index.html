@@ -336,7 +336,7 @@ function recalculateMatch(){
  state.phase=last?({start:'En juego',goal:'En juego',halftime:'Entretiempo',secondhalf:'Segundo tiempo',final:'Finalizado'}[last.type]||'En juego'):'Partido sin iniciar'
 }
 $('#timeline').onclick=e=>{if(e.target.dataset.story!==undefined)openStory(state.events[+e.target.dataset.story]);if(e.target.dataset.undo!==undefined){const index=+e.target.dataset.undo,event=state.events[index];if(!event)return;state.events.splice(index,1);recalculateMatch();render();toast('Evento deshecho')}};
-const closeModals=()=>$$('.modal').forEach(m=>m.classList.remove('open'));$$('[data-close]').forEach(b=>b.onclick=closeModals);$('.modal').forEach(m=>m.onclick=e=>{if(e.target===m)closeModals()});
+const closeModals=()=>$$('.modal').forEach(m=>m.classList.remove('open'));$('[data-close]').forEach(b=>b.onclick=closeModals);$('.modal').forEach(m=>m.onclick=e=>{if(e.target===m)closeModals()});
 function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200)}
 function renderDesigner(){
  if(!$('#formatSelect').options.length)$('#formatSelect').innerHTML=Object.entries(formatNames).map(([k,v])=>`<option value="${k}">${v}</option>`).join('');
