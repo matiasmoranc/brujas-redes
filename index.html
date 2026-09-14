@@ -79,6 +79,7 @@
         </div>
         <div class="add-elements"><button id="addTextElement" class="secondary">+ Agregar texto</button><button id="addLineElement" class="secondary">+ Agregar línea</button><button id="deleteElement" class="danger" disabled>Eliminar</button></div>
         <div class="section-title">Posición y tamaño</div>
+        <label class="notice" style="display:flex;align-items:center;gap:10px;margin:0 0 14px"><input id="applyGeometryAll" type="checkbox" style="width:21px;height:21px;accent-color:var(--green)"> Aplicar posición y tamaño de este elemento en todos los tipos de historia del diseño</label>
         <div class="editor-row"><label>Horizontal</label><input id="posX" type="range" min="0" max="100"><output id="posXOut"></output></div>
         <div class="editor-row"><label>Vertical</label><input id="posY" type="range" min="0" max="100"><output id="posYOut"></output></div>
         <div class="editor-row"><label id="sizeLabel">Tamaño</label><input id="elementSize" type="range" min="8" max="400"><output id="sizeOut"></output></div>
@@ -285,7 +286,7 @@ function renderDesigner(){
  $('#elementSelect').innerHTML=els.map(k=>`<option value="${k}">${elementNames[k]||((formats[editFormat].elements[k].type==='line'?'Línea':'Texto')+' agregado') }</option>`).join('');$('#elementSelect').value=editElement;
  $('#customTitle').value=formats[editFormat].title;const e=formats[editFormat].elements[editElement];
  if(!$('#fontSelect').options.length)$('#fontSelect').innerHTML=fonts.map(f=>`<option value="${f}" style="font-family:'${f}'">${f}</option>`).join('');
- const isCustom=editElement.startsWith('custom'),isLine=editElement==='line'||e.type==='line';$('#customContentField').classList.toggle('hidden',!isCustom||isLine);$('#customContent').value=e.content||'';$('#deleteElement').disabled=!isCustom;
+ const isCustom=editElement.startsWith('custom'),isLine=editElement==='line'||e.type==='line';$('#customContentField').classList.toggle('hidden',!isCustom||isLine);$('#customContent').value=e.content||'';$('#deleteElement').disabled=!isCustom;$('#applyGeometryAll').disabled=isCustom;if(isCustom)$('#applyGeometryAll').checked=false;
  $('#posX').value=e.x;$('#posY').value=e.y;$('#elementSize').value=e.size;$('#posXOut').value=e.x+'%';$('#posYOut').value=e.y+'%';$('#sizeOut').value=e.size+'px';$('#sizeLabel').textContent=isLine?'Ancho de línea':(editElement.includes('Logo')?'Tamaño del escudo':'Tamaño del texto');$('#lineHeightRow').classList.toggle('hidden',!isLine);$('#lineHeight').value=e.height||6;$('#lineHeightOut').value=(e.height||6)+'px';$('#fontSelect').value=e.font;$('#fontSelect').disabled=isLine||editElement.includes('Logo');$('#boldToggle').checked=e.weight>=700;$('#boldToggle').disabled=isLine||editElement.includes('Logo');$('#boldOut').value=e.weight>=700?'Sí':'No';$('#letterSpacing').value=e.spacing||0;$('#letterSpacing').disabled=isLine||editElement.includes('Logo');$('#spacingOut').value=(e.spacing||0)+'px';$('#colorPicker').value=e.color;renderPalette();
  $('#designerStory').innerHTML=storyHTML(sampleEvent(editFormat))
 }
@@ -299,8 +300,9 @@ $('#customTitle').oninput=e=>{formats[editFormat].title=e.target.value;renderDes
 $('#customContent').oninput=e=>{formats[editFormat].elements[editElement].content=e.target.value;renderDesigner()};
 function addCustom(type){const key='custom'+Date.now();formats[editFormat].elements[key]={type,x:50,y:type==='line'?78:75,size:type==='line'?220:38,height:6,font:'Arial',weight:700,spacing:0,color:type==='line'?'#ff5a00':'#090909',content:type==='text'?'NUEVO TEXTO':''};editElement=key;save();renderDesigner();toast(type==='line'?'Línea agregada':'Texto agregado')}
 $('#addTextElement').onclick=()=>addCustom('text');$('#addLineElement').onclick=()=>addCustom('line');$('#deleteElement').onclick=()=>{if(!editElement.startsWith('custom'))return;if(!confirm('¿Eliminar este elemento?'))return;delete formats[editFormat].elements[editElement];editElement='title';save();renderDesigner();toast('Elemento eliminado')};
-['posX','posY','elementSize'].forEach(id=>$('#'+id).oninput=e=>{const key=id==='posX'?'x':id==='posY'?'y':'size';formats[editFormat].elements[editElement][key]=+e.target.value;renderDesigner()});
-$('#lineHeight').oninput=e=>{formats[editFormat].elements[editElement].height=+e.target.value;renderDesigner()};
+function setGeometry(key,value){formats[editFormat].elements[editElement][key]=value;if($('#applyGeometryAll').checked&&!editElement.startsWith('custom'))Object.keys(formatNames).forEach(f=>{if(formats[f].elements[editElement])formats[f].elements[editElement][key]=value})}
+['posX','posY','elementSize'].forEach(id=>$('#'+id).oninput=e=>{const key=id==='posX'?'x':id==='posY'?'y':'size';setGeometry(key,+e.target.value);renderDesigner()});
+$('#lineHeight').oninput=e=>{setGeometry('height',+e.target.value);renderDesigner()};
 function targets(scope,includeLine=false){let out=[];const fs=scope==='all'?Object.keys(formats):[editFormat];fs.forEach(f=>applicableFor(f).forEach(k=>{const e=formats[f].elements[k];if((includeLine||(k!=='line'&&e.type!=='line'))&&!k.includes('Logo'))out.push(e)}));return scope==='element'?[formats[editFormat].elements[editElement]]:out}
 $('#fontSelect').onchange=e=>{formats[editFormat].elements[editElement].font=e.target.value;renderDesigner()};
 $('#boldToggle').onchange=e=>{formats[editFormat].elements[editElement].weight=e.target.checked?900:400;renderDesigner()};
