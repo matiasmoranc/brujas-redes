@@ -252,11 +252,14 @@ const goalElements={
  scorer:{x:50,y:67,size:46,font:'Montserrat',color:'#090909',weight:900,spacing:1},
  goalText:{x:50,y:74,size:88,font:'Montserrat',color:'#ff5a00',weight:900,spacing:2}
 };
+const resultFormats=['halftime','secondhalf','final'];
+const resultElements=Object.fromEntries(['title','line','homeLogo','center','awayLogo','homeScore','awayScore'].map(k=>[k,goalElements[k]]));
+
 const formatTweaks={
  upcoming:{title:{y:24},line:{y:27},homeLogo:{y:43},center:{y:43},awayLogo:{y:43},homeName:{y:55},awayName:{y:55}},
  start:{},goal:{},halftime:{},secondhalf:{},final:{}
 };
-function makeDefaults(){const o={};Object.keys(formatNames).forEach(f=>{o[f]={title:titleDefaults[f],elements:JSON.parse(JSON.stringify(baseElements))};Object.entries(formatTweaks[f]||{}).forEach(([k,v])=>Object.assign(o[f].elements[k],v))});o.goal={title:'PRIMER TIEMPO',layoutVersion:2,elements:JSON.parse(JSON.stringify(goalElements))};return o}
+function makeDefaults(){const o={};Object.keys(formatNames).forEach(f=>{o[f]={title:titleDefaults[f],elements:JSON.parse(JSON.stringify(baseElements))};Object.entries(formatTweaks[f]||{}).forEach(([k,v])=>Object.assign(o[f].elements[k],v))});o.goal={title:'PRIMER TIEMPO',layoutVersion:2,elements:JSON.parse(JSON.stringify(goalElements))};resultFormats.forEach(f=>o[f]={title:titleDefaults[f],layoutVersion:2,elements:JSON.parse(JSON.stringify(resultElements))});return o}
 let formats={...makeDefaults(),...JSON.parse(localStorage.getItem('brujasFormats')||'{}')};
 const defaultColor=k=>k==='line'||k==='homeName'?'#ff5a00':'#090909',defaultWeight=k=>k==='title'||k==='place'?400:(k==='homeName'||k==='awayName'||k==='center'?900:700);
 function hydrateFormat(f){
@@ -264,8 +267,11 @@ function hydrateFormat(f){
  if(f==='goal'&&formats[f].layoutVersion!==2){
   const custom=Object.fromEntries(Object.entries(formats[f].elements||{}).filter(([k])=>k.startsWith('custom')));
   formats[f]={title:'PRIMER TIEMPO',layoutVersion:2,elements:{...JSON.parse(JSON.stringify(goalElements)),...custom}}
+ }else if(resultFormats.includes(f)&&formats[f].layoutVersion!==2){
+  const custom=Object.fromEntries(Object.entries(formats[f].elements||{}).filter(([k])=>k.startsWith('custom')));
+  formats[f]={title:titleDefaults[f],layoutVersion:2,elements:{...JSON.parse(JSON.stringify(resultElements)),...custom}}
  }else{
-  const defaults=f==='goal'?goalElements:baseElements;
+  const defaults=f==='goal'?goalElements:(resultFormats.includes(f)?resultElements:baseElements);
   formats[f].elements={...JSON.parse(JSON.stringify(defaults)),...formats[f].elements}
  }
  Object.entries(formats[f].elements).forEach(([k,e])=>{e.font=e.font||'Arial';e.color=e.color||defaultColor(k);e.weight=e.weight||defaultWeight(k);e.spacing=e.spacing??0;if(k==='line'||e.type==='line')e.height=e.height||6})
@@ -279,12 +285,12 @@ let teams=JSON.parse(localStorage.getItem('brujasTeams')||'[]'),editingTeamId=nu
 if(!Object.keys(savedDesigns).length){const names=new Set;Object.values(oldPresets).forEach(group=>Object.keys(group||{}).forEach(n=>names.add(n)));names.forEach(name=>{savedDesigns[name]={formats:{},syncGeometry:{}};Object.keys(formatNames).forEach(f=>savedDesigns[name].formats[f]=JSON.parse(JSON.stringify(oldPresets[f]?.[name]||makeDefaults()[f]))) });activeDesign=Object.values(oldActive).find(n=>savedDesigns[n])||''}
 Object.values(savedDesigns).forEach(d=>d.syncGeometry=d.syncGeometry||{});
 let editFormat='upcoming',editElement='title',floatingOpen=false;
-const applicable={upcoming:['title','line','homeLogo','center','awayLogo','homeName','awayName','day','time','place'],start:['title','line','homeLogo','center','awayLogo','homeName','awayName'],goal:['title','line','homeLogo','center','awayLogo','homeScore','awayScore','minute','scorer','goalText'],halftime:['title','line','homeLogo','center','awayLogo','homeName','awayName'],secondhalf:['title','line','homeLogo','center','awayLogo','homeName','awayName'],final:['title','line','homeLogo','center','awayLogo','homeName','awayName']};
+const applicable={upcoming:['title','line','homeLogo','center','awayLogo','homeName','awayName','day','time','place'],start:['title','line','homeLogo','center','awayLogo','homeName','awayName'],goal:['title','line','homeLogo','center','awayLogo','homeScore','awayScore','minute','scorer','goalText'],halftime:['title','line','homeLogo','center','awayLogo','homeScore','awayScore'],secondhalf:['title','line','homeLogo','center','awayLogo','homeScore','awayScore'],final:['title','line','homeLogo','center','awayLogo','homeScore','awayScore']};
 const elementNames={title:'Título',line:'Línea naranja',homeLogo:'Escudo local',center:'VS / marcador',awayLogo:'Escudo visitante',homeName:'Nombre local',awayName:'Nombre visitante',detail:'Detalle',homeScore:'Goles local',awayScore:'Goles visitante',minute:'Minuto',scorer:'Goleador local',goalText:'Texto GOOOL',day:'Día',time:'Hora',place:'Lugar'};
 const applicableFor=f=>[...applicable[f],...Object.keys(formats[f].elements).filter(k=>k.startsWith('custom'))];
 const save=()=>{localStorage.setItem('brujasMatch',JSON.stringify(state));localStorage.setItem('brujasFormats',JSON.stringify(formats));localStorage.setItem('brujasPalette',JSON.stringify(palette));localStorage.setItem('brujasDesigns',JSON.stringify(savedDesigns));localStorage.setItem('brujasActiveDesign',activeDesign);localStorage.setItem('brujasTeams',JSON.stringify(teams));window.queueBrujasCloudSave?.()};
 const esc=s=>String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-const sampleEvent=f=>({type:f,title:titleDefaults[f],homeScore:f==='start'||f==='upcoming'?0:2,awayScore:f==='start'||f==='upcoming'?0:1,scorer:f==='goal'?'JUGADOR BRUJAS':'',minute:f==='goal'?'37':'',icon:'●'});
+const sampleEvent=f=>({type:f,title:titleDefaults[f],homeScore:f==='start'||f==='upcoming'?0:2,awayScore:f==='start'||f==='upcoming'?0:1,scorer:f==='goal'?'JUGADOR BRUJAS':'',minute:f==='goal'?'37':'',side:f==='goal'?'home':'',icon:'●'});
 function itemStyle(k,c){const e=c.elements[k];return `left:${e.x}%;top:${e.y}%;font-size:${e.size/10.8}cqw;color:${e.color};font-family:'${e.font}',sans-serif;font-weight:${e.weight};letter-spacing:${e.spacing/10.8}cqw`}
 const editClass=(k,on)=>on?` editable ${k===editElement?'selected':''}`:'';
 function logoHTML(src,k,c,on=false){const e=c.elements[k],sty=`left:${e.x}%;top:${e.y}%;width:${e.size/10.8}cqw;height:${e.size/10.8}cqw`,at=on?` data-element="${k}"`:'';return src?`<img class="story-item${editClass(k,on)}" ${at} style="${sty};object-fit:contain" src="${src}" alt="">`:`<div class="story-item placeholder-logo${editClass(k,on)}" ${at} style="${sty}">ESCUDO</div>`}
@@ -301,15 +307,17 @@ function goalPeriod(ev){
  return previous.some(item=>item.type==='secondhalf')?'SEGUNDO TIEMPO':'PRIMER TIEMPO'
 }
 function storyHTML(ev,interactive=false){
- const f=formatNames[ev.type]?ev.type:'start',c=formats[f],eventScore=scoreForEvent(ev),score=`${eventScore.home}–${eventScore.away}`,mid=(f==='start'||f==='upcoming')?'VS':score;
+ const f=formatNames[ev.type]?ev.type:'start',c=formats[f],eventScore=scoreForEvent(ev),score=`${eventScore.home}–${eventScore.away}`,mid=(f==='start'||f==='upcoming')?'VS':score,isScoreboard=f==='goal'||resultFormats.includes(f);
  const heading=f==='goal'?goalPeriod(ev):c.title;
  let h=`<div class="story-item story-title${editClass('title',interactive)}" data-element="${interactive?'title':''}" style="${itemStyle('title',c)}">${esc(heading)}</div><div class="story-item story-line${editClass('line',interactive)}" data-element="${interactive?'line':''}" style="left:${c.elements.line.x}%;top:${c.elements.line.y}%;width:${c.elements.line.size/10.8}cqw;height:${c.elements.line.height/10.8}cqw;background:${c.elements.line.color}"></div>`;
- h+=logoHTML(state.homeLogo,'homeLogo',c,interactive)+`<div class="story-item story-center${editClass('center',interactive)}" data-element="${interactive?'center':''}" style="${itemStyle('center',c)}">${f==='goal'?'VS':mid}</div>`+logoHTML(state.awayLogo,'awayLogo',c,interactive);
- if(f==='goal'){
+ h+=logoHTML(state.homeLogo,'homeLogo',c,interactive)+`<div class="story-item story-center${editClass('center',interactive)}" data-element="${interactive?'center':''}" style="${itemStyle('center',c)}">${isScoreboard?'VS':mid}</div>`+logoHTML(state.awayLogo,'awayLogo',c,interactive);
+ if(isScoreboard){
   h+=`<div class="story-item story-detail${editClass('homeScore',interactive)}" data-element="${interactive?'homeScore':''}" style="${itemStyle('homeScore',c)}">${eventScore.home}</div><div class="story-item story-detail${editClass('awayScore',interactive)}" data-element="${interactive?'awayScore':''}" style="${itemStyle('awayScore',c)}">${eventScore.away}</div>`;
-  h+=`<div class="story-item story-detail${editClass('minute',interactive)}" data-element="${interactive?'minute':''}" style="${itemStyle('minute',c)}">MIN ${esc(ev.minute||37)}'</div>`;
-  if(ev.side==='home'){
-   h+=`<div class="story-item story-detail${editClass('scorer',interactive)}" data-element="${interactive?'scorer':''}" style="${itemStyle('scorer',c)}">${esc(ev.scorer||'JUGADOR BRUJAS')}</div><div class="story-item story-detail${editClass('goalText',interactive)}" data-element="${interactive?'goalText':''}" style="${itemStyle('goalText',c)}">GOOOL!!</div>`
+  if(f==='goal'){
+   h+=`<div class="story-item story-detail${editClass('minute',interactive)}" data-element="${interactive?'minute':''}" style="${itemStyle('minute',c)}">MIN ${esc(ev.minute||37)}'</div>`;
+   if(ev.side==='home'){
+    h+=`<div class="story-item story-detail${editClass('scorer',interactive)}" data-element="${interactive?'scorer':''}" style="${itemStyle('scorer',c)}">${esc(ev.scorer||'JUGADOR BRUJAS')}</div><div class="story-item story-detail${editClass('goalText',interactive)}" data-element="${interactive?'goalText':''}" style="${itemStyle('goalText',c)}">GOOOL!!</div>`
+   }
   }
  }else{
   h+=`<div class="story-item story-name story-home-name${editClass('homeName',interactive)}" data-element="${interactive?'homeName':''}" style="${itemStyle('homeName',c)}">${esc(state.homeName||'LOCAL')}</div><div class="story-item story-name${editClass('awayName',interactive)}" data-element="${interactive?'awayName':''}" style="${itemStyle('awayName',c)}">${esc(state.awayName||'VISITANTE')}</div>`
@@ -429,15 +437,18 @@ async function buildStoryImage(){
  const ln=cfg.elements.line;x.fillStyle=ln.color;x.fillRect(ln.x*10.8-ln.size/2,ln.y*19.2-ln.height/2,ln.size,ln.height);
  if(hi)drawContain(x,hi,cfg.elements.homeLogo.x*10.8,cfg.elements.homeLogo.y*19.2,cfg.elements.homeLogo.size);
  if(ai)drawContain(x,ai,cfg.elements.awayLogo.x*10.8,cfg.elements.awayLogo.y*19.2,cfg.elements.awayLogo.size);
- if(f==='goal'){
+ const isScoreboard=f==='goal'||resultFormats.includes(f);
+ if(isScoreboard){
   const eventScore=scoreForEvent(ev);
   drawText(x,'VS',cfg.elements.center);
   drawText(x,String(eventScore.home),cfg.elements.homeScore);
   drawText(x,String(eventScore.away),cfg.elements.awayScore);
-  drawText(x,`MIN ${ev.minute}'`,cfg.elements.minute);
-  if(ev.side==='home'){
-   drawText(x,(ev.scorer||'JUGADOR BRUJAS').toUpperCase(),cfg.elements.scorer);
-   drawText(x,'GOOOL!!',cfg.elements.goalText)
+  if(f==='goal'){
+   drawText(x,`MIN ${ev.minute}'`,cfg.elements.minute);
+   if(ev.side==='home'){
+    drawText(x,(ev.scorer||'JUGADOR BRUJAS').toUpperCase(),cfg.elements.scorer);
+    drawText(x,'GOOOL!!',cfg.elements.goalText)
+   }
   }
  }else{
   drawText(x,(f==='start'||f==='upcoming')?'VS':`${ev.homeScore}–${ev.awayScore}`,cfg.elements.center);
