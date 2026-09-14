@@ -19,6 +19,20 @@ function safeEqual(left,right){
  return a.length===b.length&&crypto.timingSafeEqual(a,b);
 }
 
+const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+
+async function waitForContainer(containerId,token){
+ for(let attempt=0;attempt<15;attempt++){
+  const response=await fetch(`https://graph.instagram.com/${graphVersion}/${containerId}?fields=status_code,status&access_token=${encodeURIComponent(token)}`);
+  const data=await response.json();
+  if(!response.ok)throw new Error(data.error?.message||"No se pudo consultar el estado de la historia");
+  if(data.status_code==="FINISHED")return;
+  if(data.status_code==="ERROR"||data.status_code==="EXPIRED")throw new Error(data.status||"Instagram no pudo procesar la historia");
+  await wait(2000);
+ }
+ throw new Error("Instagram demoró demasiado en procesar la historia. Intentá nuevamente.");
+}
+
 exports.publishInstagramStory=onRequest({
  region:"us-east1",
  cors:[allowedOrigin],
@@ -50,13 +64,20 @@ exports.publishInstagramStory=onRequest({
   });
   const created=await createResponse.json();
   if(!createResponse.ok||!created.id)throw new Error(created.error?.message||"Instagram no creó el contenedor");
-  const publishResponse=await fetch(`https://graph.instagram.com/${graphVersion}/${instagramUserId}/media_publish`,{
-   method:"POST",
-   headers:{"Content-Type":"application/x-www-form-urlencoded"},
-   body:new URLSearchParams({creation_id:created.id,access_token:token})
-  });
-  const published=await publishResponse.json();
-  if(!publishResponse.ok||!published.id)throw new Error(published.error?.message||"Instagram no publicó la historia");
+  await waitForContainer(created.id,token);
+  let published=null;
+  for(let attempt=0;attempt<5;attempt++){
+   const publishResponse=await fetch(`https://graph.instagram.com/${graphVersion}/${instagramUserId}/media_publish`,{
+    method:"POST",
+    headers:{"Content-Type":"application/x-www-form-urlencoded"},
+    body:new URLSearchParams({creation_id:created.id,access_token:token})
+   });
+   published=await publishResponse.json();
+   if(publishResponse.ok&&published.id)break;
+   const message=published.error?.message||"Instagram no publicó la historia";
+   if(!/media id is not available/i.test(message)||attempt===4)throw new Error(message);
+   await wait(2000);
+  }
   return res.json({ok:true,mediaId:published.id});
  }catch(error){
   console.error(error);
