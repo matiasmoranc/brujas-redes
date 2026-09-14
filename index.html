@@ -17,6 +17,7 @@
     .designer-grid{display:grid;grid-template-columns:1fr 340px;gap:18px}.editor-row{display:grid;grid-template-columns:130px 1fr 54px;align-items:center;gap:10px;margin:14px 0}.editor-row output{color:var(--green);font-size:12px;text-align:right}.editor-row input[type=range]{padding:0;accent-color:var(--green)}.editor-actions{display:flex;gap:10px;margin-top:22px}.editor-actions button{flex:1}.story-item{position:absolute;transform:translate(-50%,-50%);margin:0!important}.story-title{white-space:nowrap;font-weight:500;letter-spacing:.18em}.story-line{height:4px}.story-center{font-weight:950;font-style:italic;white-space:nowrap}.story-name{font-weight:950;white-space:nowrap}.story-home-name{color:#ff5a00}.story-detail{font-weight:800;white-space:nowrap}.upcoming-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px}.format-note{font-size:12px;color:var(--muted);line-height:1.5}
     @media(max-width:760px){.app{padding:16px 12px 80px}.setup-grid,.live-grid,.designer-grid{grid-template-columns:1fr}.preview-shell{position:static}.card{padding:17px}.form-grid{grid-template-columns:1fr}.field.full{grid-column:auto}.top .status{display:none}.tabs{width:100%}.tab{flex:1;padding:10px 5px;font-size:11px}.preview-shell{order:-1}.phone{max-width:230px}.event-grid{grid-template-columns:1fr 1fr}.editor-row{grid-template-columns:105px 1fr 45px}.story-title{letter-spacing:.12em}}
     .story{container-type:inline-size}.style-controls{margin-top:18px;padding-top:18px;border-top:1px solid var(--line)}.color-tools{display:grid;grid-template-columns:1fr auto;gap:9px}.color-tools input[type=color]{height:46px;padding:5px}.palette{display:flex;flex-wrap:wrap;gap:9px;margin-top:12px}.swatch{width:34px;height:34px;border-radius:50%;border:3px solid #344139;box-shadow:0 0 0 1px #ffffff25;position:relative}.swatch.active:after{content:"✓";position:absolute;inset:0;display:grid;place-items:center;color:white;text-shadow:0 1px 4px #000;font-weight:900}.apply-style{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+    .add-elements{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin:12px 0 18px}.add-elements button{padding:11px 12px}.hidden{display:none!important}
   </style>
 </head>
 <body>
@@ -61,7 +62,9 @@
           <div class="field"><label>Formato de historia</label><select id="formatSelect"></select></div>
           <div class="field"><label>Elemento a editar</label><select id="elementSelect"></select></div>
           <div class="field full"><label>Texto del título</label><input id="customTitle" placeholder="Título que aparecerá en la historia"></div>
+          <div id="customContentField" class="field full hidden"><label>Contenido del texto agregado</label><input id="customContent" placeholder="Escribí el texto"></div>
         </div>
+        <div class="add-elements"><button id="addTextElement" class="secondary">+ Agregar texto</button><button id="addLineElement" class="secondary">+ Agregar línea</button><button id="deleteElement" class="danger" disabled>Eliminar</button></div>
         <div class="section-title">Posición y tamaño</div>
         <div class="editor-row"><label>Horizontal</label><input id="posX" type="range" min="0" max="100"><output id="posXOut"></output></div>
         <div class="editor-row"><label>Vertical</label><input id="posY" type="range" min="0" max="100"><output id="posYOut"></output></div>
@@ -204,6 +207,7 @@ let palette=JSON.parse(localStorage.getItem('brujasPalette')||'["#ff5a00","#0909
 let editFormat='upcoming',editElement='title';
 const applicable={upcoming:['title','line','homeLogo','center','awayLogo','homeName','awayName','day','time','place'],start:['title','line','homeLogo','center','awayLogo','homeName','awayName'],goal:['title','line','homeLogo','center','awayLogo','homeName','awayName','detail'],halftime:['title','line','homeLogo','center','awayLogo','homeName','awayName'],secondhalf:['title','line','homeLogo','center','awayLogo','homeName','awayName'],final:['title','line','homeLogo','center','awayLogo','homeName','awayName']};
 const elementNames={title:'Título',line:'Línea naranja',homeLogo:'Escudo local',center:'VS / marcador',awayLogo:'Escudo visitante',homeName:'Nombre local',awayName:'Nombre visitante',detail:'Goleador y minuto',day:'Día',time:'Hora',place:'Lugar'};
+const applicableFor=f=>[...applicable[f],...Object.keys(formats[f].elements).filter(k=>k.startsWith('custom'))];
 const save=()=>{localStorage.setItem('brujasMatch',JSON.stringify(state));localStorage.setItem('brujasFormats',JSON.stringify(formats));localStorage.setItem('brujasPalette',JSON.stringify(palette))};
 const esc=s=>String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const sampleEvent=f=>({type:f,title:titleDefaults[f],homeScore:f==='start'||f==='upcoming'?0:2,awayScore:f==='start'||f==='upcoming'?0:1,scorer:f==='goal'?'JUGADOR BRUJAS':'',minute:f==='goal'?'37':'',icon:'●'});
@@ -216,6 +220,7 @@ function storyHTML(ev){
  h+=`<div class="story-item story-name story-home-name" style="${itemStyle('homeName',c)}">${esc(state.homeName||'LOCAL')}</div><div class="story-item story-name" style="${itemStyle('awayName',c)}">${esc(state.awayName||'VISITANTE')}</div>`;
  if(f==='goal')h+=`<div class="story-item story-detail" style="${itemStyle('detail',c)}">${esc(ev.scorer||'JUGADOR BRUJAS')} · ${esc(ev.minute||37)}'</div>`;
  if(f==='upcoming')h+=`<div class="story-item story-detail" style="${itemStyle('day',c)}">▣ &nbsp;${esc(state.matchDay||'DÍA')}</div><div class="story-item story-detail" style="${itemStyle('time',c)}">◷ &nbsp;${esc(state.matchTime||'HORA')}</div><div class="story-item story-detail" style="${itemStyle('place',c)}">${esc(state.matchPlace||'LUGAR')}</div>`;
+ Object.keys(c.elements).filter(k=>k.startsWith('custom')).forEach(k=>{const e=c.elements[k];h+=e.type==='line'?`<div class="story-item story-line" style="left:${e.x}%;top:${e.y}%;width:${e.size/10.8}cqw;background:${e.color}"></div>`:`<div class="story-item story-detail" style="${itemStyle(k,c)}">${esc(e.content||'TEXTO')}</div>`});
  return h
 }
 function placeholder(){return 'data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><rect width="80" height="80" rx="15" fill="#202a23"/><path d="M40 18l18 8v13c0 12-8 20-18 24-10-4-18-12-18-24V26z" fill="none" stroke="#718078" stroke-width="3"/></svg>')}
@@ -251,17 +256,21 @@ $('#newMatch').onclick=()=>{if(!confirm('¿Crear un partido nuevo?'))return;stat
 function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200)}
 function renderDesigner(){
  if(!$('#formatSelect').options.length)$('#formatSelect').innerHTML=Object.entries(formatNames).map(([k,v])=>`<option value="${k}">${v}</option>`).join('');
- $('#formatSelect').value=editFormat;const els=applicable[editFormat];if(!els.includes(editElement))editElement=els[0];
- $('#elementSelect').innerHTML=els.map(k=>`<option value="${k}">${elementNames[k]}</option>`).join('');$('#elementSelect').value=editElement;
+ $('#formatSelect').value=editFormat;const els=applicableFor(editFormat);if(!els.includes(editElement))editElement=els[0];
+ $('#elementSelect').innerHTML=els.map(k=>`<option value="${k}">${elementNames[k]||((formats[editFormat].elements[k].type==='line'?'Línea':'Texto')+' agregado') }</option>`).join('');$('#elementSelect').value=editElement;
  $('#customTitle').value=formats[editFormat].title;const e=formats[editFormat].elements[editElement];
  if(!$('#fontSelect').options.length)$('#fontSelect').innerHTML=fonts.map(f=>`<option value="${f}" style="font-family:'${f}'">${f}</option>`).join('');
- $('#posX').value=e.x;$('#posY').value=e.y;$('#elementSize').value=e.size;$('#posXOut').value=e.x+'%';$('#posYOut').value=e.y+'%';$('#sizeOut').value=e.size+'px';$('#sizeLabel').textContent=editElement==='line'?'Ancho de línea':(editElement.includes('Logo')?'Tamaño del escudo':'Tamaño');$('#fontSelect').value=e.font;$('#fontSelect').disabled=editElement==='line'||editElement.includes('Logo');$('#colorPicker').value=e.color;renderPalette();
+ const isCustom=editElement.startsWith('custom'),isLine=editElement==='line'||e.type==='line';$('#customContentField').classList.toggle('hidden',!isCustom||isLine);$('#customContent').value=e.content||'';$('#deleteElement').disabled=!isCustom;
+ $('#posX').value=e.x;$('#posY').value=e.y;$('#elementSize').value=e.size;$('#posXOut').value=e.x+'%';$('#posYOut').value=e.y+'%';$('#sizeOut').value=e.size+'px';$('#sizeLabel').textContent=isLine?'Ancho de línea':(editElement.includes('Logo')?'Tamaño del escudo':'Tamaño');$('#fontSelect').value=e.font;$('#fontSelect').disabled=isLine||editElement.includes('Logo');$('#colorPicker').value=e.color;renderPalette();
  $('#designerStory').innerHTML=storyHTML(sampleEvent(editFormat))
 }
-$('#formatSelect').onchange=e=>{editFormat=e.target.value;editElement=applicable[editFormat][0];renderDesigner()};$('#elementSelect').onchange=e=>{editElement=e.target.value;renderDesigner()};
+$('#formatSelect').onchange=e=>{editFormat=e.target.value;editElement=applicableFor(editFormat)[0];renderDesigner()};$('#elementSelect').onchange=e=>{editElement=e.target.value;renderDesigner()};
 $('#customTitle').oninput=e=>{formats[editFormat].title=e.target.value;renderDesigner()};
+$('#customContent').oninput=e=>{formats[editFormat].elements[editElement].content=e.target.value;renderDesigner()};
+function addCustom(type){const key='custom'+Date.now();formats[editFormat].elements[key]={type,x:50,y:type==='line'?78:75,size:type==='line'?220:38,font:'Arial',color:type==='line'?'#ff5a00':'#090909',content:type==='text'?'NUEVO TEXTO':''};editElement=key;save();renderDesigner();toast(type==='line'?'Línea agregada':'Texto agregado')}
+$('#addTextElement').onclick=()=>addCustom('text');$('#addLineElement').onclick=()=>addCustom('line');$('#deleteElement').onclick=()=>{if(!editElement.startsWith('custom'))return;if(!confirm('¿Eliminar este elemento?'))return;delete formats[editFormat].elements[editElement];editElement='title';save();renderDesigner();toast('Elemento eliminado')};
 ['posX','posY','elementSize'].forEach(id=>$('#'+id).oninput=e=>{const key=id==='posX'?'x':id==='posY'?'y':'size';formats[editFormat].elements[editElement][key]=+e.target.value;renderDesigner()});
-function targets(scope,includeLine=false){let out=[];const fs=scope==='all'?Object.keys(formats):[editFormat];fs.forEach(f=>applicable[f].forEach(k=>{if((includeLine||k!=='line')&&!k.includes('Logo'))out.push(formats[f].elements[k])}));return scope==='element'?[formats[editFormat].elements[editElement]]:out}
+function targets(scope,includeLine=false){let out=[];const fs=scope==='all'?Object.keys(formats):[editFormat];fs.forEach(f=>applicableFor(f).forEach(k=>{const e=formats[f].elements[k];if((includeLine||(k!=='line'&&e.type!=='line'))&&!k.includes('Logo'))out.push(e)}));return scope==='element'?[formats[editFormat].elements[editElement]]:out}
 $('#fontSelect').onchange=e=>{targets($('#fontScope').value).forEach(x=>x.font=e.target.value);renderDesigner()};
 function renderPalette(){$('#palette').innerHTML=palette.map(c=>`<button class="swatch ${c.toLowerCase()===$('#colorPicker').value.toLowerCase()?'active':''}" data-color="${c}" style="background:${c}" title="${c}"></button>`).join('')}
 $('#palette').onclick=e=>{if(e.target.dataset.color){$('#colorPicker').value=e.target.dataset.color;renderPalette()}};
@@ -279,6 +288,7 @@ $('#downloadStory').onclick=async()=>{if(!selectedEvent)return;const ev=selected
  drawText(x,(state.homeName||'LOCAL').toUpperCase(),cfg.elements.homeName,900);drawText(x,(state.awayName||'VISITANTE').toUpperCase(),cfg.elements.awayName,900);
  if(f==='goal')drawText(x,`${(ev.scorer||'JUGADOR').toUpperCase()} · ${ev.minute}'`,cfg.elements.detail);
  if(f==='upcoming'){drawText(x,'▣  '+(state.matchDay||'DÍA').toUpperCase(),cfg.elements.day);drawText(x,'◷  '+(state.matchTime||'HORA').toUpperCase(),cfg.elements.time);drawText(x,(state.matchPlace||'LUGAR').toUpperCase(),cfg.elements.place,500)}
+ Object.keys(cfg.elements).filter(k=>k.startsWith('custom')).forEach(k=>{const e=cfg.elements[k];if(e.type==='line'){x.fillStyle=e.color;x.fillRect(e.x*10.8-e.size/2,e.y*19.2-3,e.size,6)}else drawText(x,(e.content||'TEXTO').toUpperCase(),e)});
  const a=document.createElement('a');a.download=`historia-${f}-${Date.now()}.png`;a.href=c.toDataURL('image/png');a.click();toast('Historia descargada')};
 render();
 </script>
