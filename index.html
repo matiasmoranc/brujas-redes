@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#090d0b">
   <title>Brujas Redes | Panel de partido</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow+Condensed:wght@400;700;900&family=Bebas+Neue&family=Montserrat:wght@400;700;900&family=Oswald:wght@400;700&family=Playfair+Display:wght@400;700;900&family=Poppins:wght@400;700;900&family=Roboto+Condensed:wght@400;700;900&display=swap" rel="stylesheet">
   <style>
     :root{--bg:#090d0b;--panel:#121814;--panel2:#18211b;--line:#27332b;--green:#b9ff42;--green2:#72d621;--text:#f5f8f5;--muted:#91a096;--danger:#ff5d5d;--gold:#ffc857;--radius:22px}
     *{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top right,#1a2b20 0,transparent 35%),var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;min-height:100vh}
@@ -84,6 +87,8 @@
             <div class="field"><label>Fuente</label><select id="fontSelect"></select></div>
             <div class="field"><label>Aplicar fuente a</label><select id="fontScope"><option value="element">Este elemento</option><option value="format">Todo este formato</option><option value="all">Todos los formatos</option></select></div>
           </div>
+          <div class="editor-row"><label>Negrita</label><input id="boldToggle" type="checkbox" style="width:24px;height:24px;accent-color:var(--green)"><output id="boldOut"></output></div>
+          <div class="editor-row"><label>Separar letras</label><input id="letterSpacing" type="range" min="-2" max="30" step="1"><output id="spacingOut"></output></div>
           <div class="section-title">Color del elemento</div>
           <div class="color-tools"><input id="colorPicker" type="color"><button id="addColor" class="secondary">+ Guardar color</button></div>
           <div id="palette" class="palette"></div>
@@ -211,9 +216,10 @@ const formatTweaks={
 };
 function makeDefaults(){const o={};Object.keys(formatNames).forEach(f=>{o[f]={title:titleDefaults[f],elements:JSON.parse(JSON.stringify(baseElements))};Object.entries(formatTweaks[f]||{}).forEach(([k,v])=>Object.assign(o[f].elements[k],v))});return o}
 let formats={...makeDefaults(),...JSON.parse(localStorage.getItem('brujasFormats')||'{}')};
-const defaultColor=k=>k==='line'||k==='homeName'?'#ff5a00':'#090909';
-Object.keys(formatNames).forEach(f=>{formats[f]=formats[f]||makeDefaults()[f];formats[f].elements={...JSON.parse(JSON.stringify(baseElements)),...formats[f].elements};Object.entries(formats[f].elements).forEach(([k,e])=>{e.font=e.font||'Arial';e.color=e.color||defaultColor(k)})});
-const fonts=['Arial','Impact','Georgia','Trebuchet MS','Verdana','Times New Roman','Courier New','Tahoma'];
+const defaultColor=k=>k==='line'||k==='homeName'?'#ff5a00':'#090909',defaultWeight=k=>k==='title'||k==='place'?400:(k==='homeName'||k==='awayName'||k==='center'?900:700);
+function hydrateFormat(f){formats[f]=formats[f]||makeDefaults()[f];formats[f].elements={...JSON.parse(JSON.stringify(baseElements)),...formats[f].elements};Object.entries(formats[f].elements).forEach(([k,e])=>{e.font=e.font||'Arial';e.color=e.color||defaultColor(k);e.weight=e.weight||defaultWeight(k);e.spacing=e.spacing??0})}
+Object.keys(formatNames).forEach(f=>hydrateFormat(f));
+const fonts=['Arial','Anton','Bebas Neue','Oswald','Barlow Condensed','Montserrat','Roboto Condensed','Poppins','Impact','Georgia','Trebuchet MS','Verdana','Playfair Display','Times New Roman','Courier New','Tahoma'];
 let palette=JSON.parse(localStorage.getItem('brujasPalette')||'["#ff5a00","#090909","#ffffff","#1b5e20","#1565c0","#fbc02d"]');
 let savedPresets=JSON.parse(localStorage.getItem('brujasSavedPresets')||'{}'),activePresets=JSON.parse(localStorage.getItem('brujasActivePresets')||'{}');
 Object.keys(formatNames).forEach(f=>savedPresets[f]=savedPresets[f]||{});
@@ -224,7 +230,7 @@ const applicableFor=f=>[...applicable[f],...Object.keys(formats[f].elements).fil
 const save=()=>{localStorage.setItem('brujasMatch',JSON.stringify(state));localStorage.setItem('brujasFormats',JSON.stringify(formats));localStorage.setItem('brujasPalette',JSON.stringify(palette));localStorage.setItem('brujasSavedPresets',JSON.stringify(savedPresets));localStorage.setItem('brujasActivePresets',JSON.stringify(activePresets))};
 const esc=s=>String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const sampleEvent=f=>({type:f,title:titleDefaults[f],homeScore:f==='start'||f==='upcoming'?0:2,awayScore:f==='start'||f==='upcoming'?0:1,scorer:f==='goal'?'JUGADOR BRUJAS':'',minute:f==='goal'?'37':'',icon:'●'});
-function itemStyle(k,c){const e=c.elements[k];return `left:${e.x}%;top:${e.y}%;font-size:${e.size/10.8}cqw;color:${e.color};font-family:'${e.font}',sans-serif`}
+function itemStyle(k,c){const e=c.elements[k];return `left:${e.x}%;top:${e.y}%;font-size:${e.size/10.8}cqw;color:${e.color};font-family:'${e.font}',sans-serif;font-weight:${e.weight};letter-spacing:${e.spacing/10.8}cqw`}
 function logoHTML(src,k,c){const e=c.elements[k],sty=`left:${e.x}%;top:${e.y}%;width:${e.size/10.8}cqw;height:${e.size/10.8}cqw`;return src?`<img class="story-item" style="${sty};object-fit:contain" src="${src}" alt="">`:`<div class="story-item placeholder-logo" style="${sty}">ESCUDO</div>`}
 function storyHTML(ev){
  const f=formatNames[ev.type]?ev.type:'start',c=formats[f],score=`${ev.homeScore??state.homeScore}–${ev.awayScore??state.awayScore}`,mid=(f==='start'||f==='upcoming')?'VS':score;
@@ -249,7 +255,7 @@ function render(){
  renderPresetChooser();renderDesigner();save()
 }
 function presetOptions(f){const names=Object.keys(savedPresets[f]);return '<option value="">Seleccioná un diseño</option>'+names.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('')}
-function activatePreset(f,name){if(name&&savedPresets[f][name])formats[f]=JSON.parse(JSON.stringify(savedPresets[f][name]));activePresets[f]=name;save();render()}
+function activatePreset(f,name){if(name&&savedPresets[f][name]){formats[f]=JSON.parse(JSON.stringify(savedPresets[f][name]));hydrateFormat(f)}activePresets[f]=name;save();render()}
 function renderPresetChooser(){
  $('#presetChooser').innerHTML=Object.entries(formatNames).map(([f,label])=>`<div class="preset-choice"><label>${label}</label><select data-preset-format="${f}">${presetOptions(f)}</select></div>`).join('');
  $$('[data-preset-format]').forEach(s=>s.value=activePresets[s.dataset.presetFormat]||'')
@@ -280,7 +286,7 @@ function renderDesigner(){
  $('#customTitle').value=formats[editFormat].title;const e=formats[editFormat].elements[editElement];
  if(!$('#fontSelect').options.length)$('#fontSelect').innerHTML=fonts.map(f=>`<option value="${f}" style="font-family:'${f}'">${f}</option>`).join('');
  const isCustom=editElement.startsWith('custom'),isLine=editElement==='line'||e.type==='line';$('#customContentField').classList.toggle('hidden',!isCustom||isLine);$('#customContent').value=e.content||'';$('#deleteElement').disabled=!isCustom;
- $('#posX').value=e.x;$('#posY').value=e.y;$('#elementSize').value=e.size;$('#posXOut').value=e.x+'%';$('#posYOut').value=e.y+'%';$('#sizeOut').value=e.size+'px';$('#sizeLabel').textContent=isLine?'Ancho de línea':(editElement.includes('Logo')?'Tamaño del escudo':'Tamaño');$('#fontSelect').value=e.font;$('#fontSelect').disabled=isLine||editElement.includes('Logo');$('#colorPicker').value=e.color;renderPalette();
+ $('#posX').value=e.x;$('#posY').value=e.y;$('#elementSize').value=e.size;$('#posXOut').value=e.x+'%';$('#posYOut').value=e.y+'%';$('#sizeOut').value=e.size+'px';$('#sizeLabel').textContent=isLine?'Ancho de línea':(editElement.includes('Logo')?'Tamaño del escudo':'Tamaño');$('#fontSelect').value=e.font;$('#fontSelect').disabled=isLine||editElement.includes('Logo');$('#boldToggle').checked=e.weight>=700;$('#boldToggle').disabled=isLine||editElement.includes('Logo');$('#boldOut').value=e.weight>=700?'Sí':'No';$('#letterSpacing').value=e.spacing||0;$('#letterSpacing').disabled=isLine||editElement.includes('Logo');$('#spacingOut').value=(e.spacing||0)+'px';$('#colorPicker').value=e.color;renderPalette();
  $('#designerStory').innerHTML=storyHTML(sampleEvent(editFormat))
 }
 $('#formatSelect').onchange=e=>{editFormat=e.target.value;editElement=applicableFor(editFormat)[0];renderDesigner()};$('#elementSelect').onchange=e=>{editElement=e.target.value;renderDesigner()};
@@ -291,27 +297,29 @@ $('#updatePreset').onclick=()=>{const name=$('#savedPresetSelect').value;if(!nam
 $('#deletePreset').onclick=()=>{const name=$('#savedPresetSelect').value;if(!name)return toast('Seleccioná un diseño guardado');if(!confirm(`¿Eliminar el diseño "${name}"?`))return;delete savedPresets[editFormat][name];if(activePresets[editFormat]===name)activePresets[editFormat]='';save();render();toast('Diseño eliminado')};
 $('#customTitle').oninput=e=>{formats[editFormat].title=e.target.value;renderDesigner()};
 $('#customContent').oninput=e=>{formats[editFormat].elements[editElement].content=e.target.value;renderDesigner()};
-function addCustom(type){const key='custom'+Date.now();formats[editFormat].elements[key]={type,x:50,y:type==='line'?78:75,size:type==='line'?220:38,font:'Arial',color:type==='line'?'#ff5a00':'#090909',content:type==='text'?'NUEVO TEXTO':''};editElement=key;save();renderDesigner();toast(type==='line'?'Línea agregada':'Texto agregado')}
+function addCustom(type){const key='custom'+Date.now();formats[editFormat].elements[key]={type,x:50,y:type==='line'?78:75,size:type==='line'?220:38,font:'Arial',weight:700,spacing:0,color:type==='line'?'#ff5a00':'#090909',content:type==='text'?'NUEVO TEXTO':''};editElement=key;save();renderDesigner();toast(type==='line'?'Línea agregada':'Texto agregado')}
 $('#addTextElement').onclick=()=>addCustom('text');$('#addLineElement').onclick=()=>addCustom('line');$('#deleteElement').onclick=()=>{if(!editElement.startsWith('custom'))return;if(!confirm('¿Eliminar este elemento?'))return;delete formats[editFormat].elements[editElement];editElement='title';save();renderDesigner();toast('Elemento eliminado')};
 ['posX','posY','elementSize'].forEach(id=>$('#'+id).oninput=e=>{const key=id==='posX'?'x':id==='posY'?'y':'size';formats[editFormat].elements[editElement][key]=+e.target.value;renderDesigner()});
 function targets(scope,includeLine=false){let out=[];const fs=scope==='all'?Object.keys(formats):[editFormat];fs.forEach(f=>applicableFor(f).forEach(k=>{const e=formats[f].elements[k];if((includeLine||(k!=='line'&&e.type!=='line'))&&!k.includes('Logo'))out.push(e)}));return scope==='element'?[formats[editFormat].elements[editElement]]:out}
 $('#fontSelect').onchange=e=>{targets($('#fontScope').value).forEach(x=>x.font=e.target.value);renderDesigner()};
+$('#boldToggle').onchange=e=>{formats[editFormat].elements[editElement].weight=e.target.checked?900:400;renderDesigner()};
+$('#letterSpacing').oninput=e=>{formats[editFormat].elements[editElement].spacing=+e.target.value;renderDesigner()};
 function renderPalette(){$('#palette').innerHTML=palette.map(c=>`<button class="swatch ${c.toLowerCase()===$('#colorPicker').value.toLowerCase()?'active':''}" data-color="${c}" style="background:${c}" title="${c}"></button>`).join('')}
 $('#palette').onclick=e=>{if(e.target.dataset.color){$('#colorPicker').value=e.target.dataset.color;renderPalette()}};
 $('#colorPicker').oninput=renderPalette;
 $('#addColor').onclick=()=>{const c=$('#colorPicker').value.toLowerCase();if(!palette.includes(c))palette.push(c);save();renderPalette();toast('Color guardado')};
 $('#applyColor').onclick=()=>{const scope=$('#colorScope').value,color=$('#colorPicker').value;if(scope==='element')formats[editFormat].elements[editElement].color=color;else targets(scope,true).forEach(x=>x.color=color);save();renderDesigner();toast('Color aplicado')};
-$('#saveFormat').onclick=()=>{const name=activePresets[editFormat];if(!name||!savedPresets[editFormat][name])return toast('Seleccioná un diseño guardado');savedPresets[editFormat][name]=JSON.parse(JSON.stringify(formats[editFormat]));save();render();toast('Diseño guardado')};$('#resetFormat').onclick=()=>{if(!confirm('¿Restaurar este formato al diseño original?'))return;formats[editFormat]=makeDefaults()[editFormat];Object.entries(formats[editFormat].elements).forEach(([k,e])=>{e.font='Arial';e.color=defaultColor(k)});render();toast('Formato restaurado')};
+$('#saveFormat').onclick=()=>{const name=activePresets[editFormat];if(!name||!savedPresets[editFormat][name])return toast('Seleccioná un diseño guardado');savedPresets[editFormat][name]=JSON.parse(JSON.stringify(formats[editFormat]));save();render();toast('Diseño guardado')};$('#resetFormat').onclick=()=>{if(!confirm('¿Restaurar este formato al diseño original?'))return;formats[editFormat]=makeDefaults()[editFormat];Object.entries(formats[editFormat].elements).forEach(([k,e])=>{e.font='Arial';e.color=defaultColor(k);e.weight=defaultWeight(k);e.spacing=0});render();toast('Formato restaurado')};
 const imgLoad=src=>new Promise(ok=>{if(!src)return ok(null);const i=new Image;i.onload=()=>ok(i);i.onerror=()=>ok(null);i.src=src});
 function drawContain(ctx,img,x,y,size){const r=Math.min(size/img.width,size/img.height),w=img.width*r,h=img.height*r;ctx.drawImage(img,x-w/2,y-h/2,w,h)}
-function drawText(ctx,text,e,weight=800){ctx.fillStyle=e.color;ctx.font=`${weight} ${e.size}px "${e.font}"`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(text,e.x*10.8,e.y*19.2)}
+function drawText(ctx,text,e){ctx.fillStyle=e.color;ctx.font=`${e.weight||700} ${e.size}px "${e.font}"`;ctx.letterSpacing=(e.spacing||0)+'px';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(text,e.x*10.8,e.y*19.2);ctx.letterSpacing='0px'}
 $('#downloadStory').onclick=async()=>{if(!selectedEvent)return;const ev=selectedEvent,f=ev.type,cfg=formats[f],c=$('#canvas'),x=c.getContext('2d');const [base,hi,ai]=await Promise.all([imgLoad('assets/story-base.jpg'),imgLoad(state.homeLogo),imgLoad(state.awayLogo)]);if(base)x.drawImage(base,0,0,1080,1920);else{x.fillStyle='#fff';x.fillRect(0,0,1080,1920)}
- drawText(x,cfg.title.toUpperCase(),cfg.elements.title,500);const ln=cfg.elements.line;x.fillStyle=ln.color;x.fillRect(ln.x*10.8-ln.size/2,ln.y*19.2-3,ln.size,6);
+ await Promise.all(Object.values(cfg.elements).filter(e=>e.font).map(e=>document.fonts.load(`${e.weight||700} ${e.size}px "${e.font}"`).catch(()=>null)));drawText(x,cfg.title.toUpperCase(),cfg.elements.title);const ln=cfg.elements.line;x.fillStyle=ln.color;x.fillRect(ln.x*10.8-ln.size/2,ln.y*19.2-3,ln.size,6);
  if(hi)drawContain(x,hi,cfg.elements.homeLogo.x*10.8,cfg.elements.homeLogo.y*19.2,cfg.elements.homeLogo.size);if(ai)drawContain(x,ai,cfg.elements.awayLogo.x*10.8,cfg.elements.awayLogo.y*19.2,cfg.elements.awayLogo.size);
  drawText(x,(f==='start'||f==='upcoming')?'VS':`${ev.homeScore}–${ev.awayScore}`,cfg.elements.center);
- drawText(x,(state.homeName||'LOCAL').toUpperCase(),cfg.elements.homeName,900);drawText(x,(state.awayName||'VISITANTE').toUpperCase(),cfg.elements.awayName,900);
+ drawText(x,(state.homeName||'LOCAL').toUpperCase(),cfg.elements.homeName);drawText(x,(state.awayName||'VISITANTE').toUpperCase(),cfg.elements.awayName);
  if(f==='goal')drawText(x,`${(ev.scorer||'JUGADOR').toUpperCase()} · ${ev.minute}'`,cfg.elements.detail);
- if(f==='upcoming'){drawText(x,'▣  '+(state.matchDay||'DÍA').toUpperCase(),cfg.elements.day);drawText(x,'◷  '+(state.matchTime||'HORA').toUpperCase(),cfg.elements.time);drawText(x,(state.matchPlace||'LUGAR').toUpperCase(),cfg.elements.place,500)}
+ if(f==='upcoming'){drawText(x,'▣  '+(state.matchDay||'DÍA').toUpperCase(),cfg.elements.day);drawText(x,'◷  '+(state.matchTime||'HORA').toUpperCase(),cfg.elements.time);drawText(x,(state.matchPlace||'LUGAR').toUpperCase(),cfg.elements.place)}
  Object.keys(cfg.elements).filter(k=>k.startsWith('custom')).forEach(k=>{const e=cfg.elements[k];if(e.type==='line'){x.fillStyle=e.color;x.fillRect(e.x*10.8-e.size/2,e.y*19.2-3,e.size,6)}else drawText(x,(e.content||'TEXTO').toUpperCase(),e)});
  const a=document.createElement('a');a.download=`historia-${f}-${Date.now()}.png`;a.href=c.toDataURL('image/png');a.click();toast('Historia descargada')};
 render();
