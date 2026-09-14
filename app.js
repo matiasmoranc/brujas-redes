@@ -51,6 +51,16 @@ document.addEventListener('dblclick',event=>event.preventDefault(),{passive:fals
 const $=s=>document.querySelector(s),$$=s=>document.querySelectorAll(s);
 const fresh={homeName:'Brujas',awayName:'',homeLogo:'',awayLogo:'',players:[],homeScore:0,awayScore:0,phase:'Partido sin iniciar',events:[],timerSeconds:0,timerRunning:false,timerStartedAt:null,matchDay:'SÁBADO',matchTime:'11:00 AM',matchPlace:'COMPLEJO MICROSULES'};
 let state={...fresh,...JSON.parse(localStorage.getItem('brujasMatch')||'{}')},goalSide='home',selectedEvent=null;
+const actionLocks=new Map();
+let publishingStory=false;
+function acquireActionLock(name,duration=1200){
+ const now=Date.now(),until=actionLocks.get(name)||0;
+ if(now<until){toast('Esperá un momento');return false}
+ actionLocks.set(name,now+duration);
+ setTimeout(()=>{if((actionLocks.get(name)||0)<=Date.now())actionLocks.delete(name)},duration+50);
+ return true
+}
+
 const formatNames={upcoming:'Próximo partido',start:'Inicio del partido',goal:'Gol',halftime:'Entretiempo',secondhalf:'Segundo tiempo',final:'Final del partido'};
 const titleDefaults={upcoming:'PRÓXIMO PARTIDO',start:'INICIO DE PARTIDO',goal:'¡GOOOOOL!',halftime:'ENTRETIEMPO',secondhalf:'SEGUNDO TIEMPO',final:'FINAL DEL PARTIDO'};
 const baseElements={
@@ -194,7 +204,7 @@ $('#addPlayer').onclick=addPlayer;$('#playerInput').onkeydown=e=>{if(e.key==='En
 $('#upcomingStory').onclick=()=>{if(!state.awayName.trim()||!state.matchDay.trim()||!state.matchTime.trim()||!state.matchPlace.trim())return toast('Completá rival, día, hora y lugar');openStory(sampleEvent('upcoming'))};
 $('#startMatch').onclick=()=>{if(!state.homeName.trim()||!state.awayName.trim())return toast('Ingresá ambos equipos');state.homeScore=0;state.awayScore=0;state.phase='Partido sin iniciar';state.events=[];render();switchView('live');toast('Partido creado')};
 function addEvent(type,subtitle,icon){const ev={...sampleEvent(type),title:formats[type].title,subtitle,icon,time:Date.now(),homeScore:state.homeScore,awayScore:state.awayScore};state.events.push(ev);selectedEvent=ev;render();openStory(ev)}
-$$('.event').forEach(b=>b.onclick=()=>{const t=b.dataset.event;if(t==='goalHome'||t==='goalAway')return openGoal(t==='goalHome'?'home':'away');const phases={start:'En juego',halftime:'Entretiempo',secondhalf:'Segundo tiempo',final:'Finalizado'},subs={start:'Rueda la pelota',halftime:'Resultado parcial',secondhalf:'Vuelve a rodar la pelota',final:'Resultado final'},icons={start:'▶',halftime:'⏸',secondhalf:'▶',final:'🏁'};state.phase=phases[t];addEvent(t,subs[t],icons[t])});
+$('.event').forEach(b=>b.onclick=()=>{if(!acquireActionLock('event',1200))return;const t=b.dataset.event;if(t==='goalHome'||t==='goalAway')return openGoal(t==='goalHome'?'home':'away');b.disabled=true;setTimeout(()=>b.disabled=false,1200);const phases={start:'En juego',halftime:'Entretiempo',secondhalf:'Segundo tiempo',final:'Finalizado'},subs={start:'Rueda la pelota',halftime:'Resultado parcial',secondhalf:'Vuelve a rodar la pelota',final:'Resultado final'},icons={start:'▶',halftime:'⏸',secondhalf:'▶',final:'🏁'};state.phase=phases[t];addEvent(t,subs[t],icons[t])});
 function timerValue(){
  const base=Math.max(0,Number(state.timerSeconds)||0);
  const elapsed=state.timerRunning&&state.timerStartedAt?Math.floor((Date.now()-Number(state.timerStartedAt))/1000):0;
@@ -222,7 +232,7 @@ $('#timerEdit').onkeydown=e=>{if(e.key==='Enter')$('#timerApply').click();if(e.k
 setInterval(updateTimerDisplay,250);
 
 function openGoal(side){if(side==='home'&&!state.players.length)return toast('Agregá jugadores al plantel local');goalSide=side;$('#goalTitle').textContent=side==='home'?'Gol de '+state.homeName:'Gol de '+state.awayName;const arr=side==='home'?state.players:['Gol visitante'];$('#scorer').innerHTML='<option value="">Seleccioná un jugador</option>'+arr.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('');$('#scorer').closest('.field').classList.toggle('hidden',side!=='home');$('#minute').value=String(timerMinuteValue());$('#goalModal').classList.add('open')}
-$('#confirmGoal').onclick=()=>{const scorer=goalSide==='home'?$('#scorer').value:'Gol visitante',minute=Number($('#minute').value);if(goalSide==='home'&&!scorer)return toast('Seleccioná quién hizo el gol');if(!Number.isFinite(minute)||minute<0||minute>120)return toast('Ingresá un minuto entre 0 y 120');if(goalSide==='home')state.homeScore++;else state.awayScore++;state.phase='En juego';const ev={type:'goal',title:formats.goal.title,subtitle:`${scorer} · ${minute}'`,icon:'⚽',scorer,minute,side:goalSide,time:Date.now(),homeScore:state.homeScore,awayScore:state.awayScore};state.events.push(ev);closeModals();render();openStory(ev)};
+$('#confirmGoal').onclick=()=>{const scorer=goalSide==='home'?$('#scorer').value:'Gol visitante',minute=Number($('#minute').value);if(goalSide==='home'&&!scorer)return toast('Seleccioná quién hizo el gol');if(!Number.isFinite(minute)||minute<0||minute>120)return toast('Ingresá un minuto entre 0 y 120');if(!acquireActionLock('confirmGoal',1500))return;const button=$('#confirmGoal');button.disabled=true;if(goalSide==='home')state.homeScore++;else state.awayScore++;state.phase='En juego';const ev={type:'goal',title:formats.goal.title,subtitle:`${scorer} · ${minute}'`,icon:'⚽',scorer,minute,side:goalSide,time:Date.now(),homeScore:state.homeScore,awayScore:state.awayScore};state.events.push(ev);closeModals();render();openStory(ev);setTimeout(()=>button.disabled=false,1500)};
 async function openStory(ev){
  selectedEvent=ev;
  const preview=$('#finalStory'),modal=$('#storyModal');
@@ -398,6 +408,8 @@ $('#publishPassword').onkeydown=e=>{if(e.key==='Enter')$('#confirmPublish').clic
 $('#confirmPublish').onclick=async()=>{
  const password=$('#publishPassword').value;
  if(!password)return toast('Ingresá la contraseña de publicación');
+ if(publishingStory)return toast('La historia ya se está publicando');
+ publishingStory=true;
  const button=$('#confirmPublish'),original=button.textContent;
  button.disabled=true;button.textContent='Publicando…';
  try{
@@ -411,7 +423,7 @@ $('#confirmPublish').onclick=async()=>{
  }catch(error){
   console.error('No se pudo publicar en Instagram',error);
   toast(error.message||'No se pudo publicar en Instagram')
- }finally{button.disabled=false;button.textContent=original}
+ }finally{publishingStory=false;button.disabled=false;button.textContent=original}
 };
 window.getBrujasCloudData=()=>({state,formats,palette,savedDesigns,activeDesign,teams});
 window.applyBrujasCloudData=data=>{
