@@ -29,7 +29,7 @@
 </head>
 <body>
 <main class="app">
-  <header class="top"><div class="brand"><div class="brand-mark">⚡</div><div><h1>Brujas Redes</h1><p>Historias del partido, en segundos</p></div></div><div class="status"><i></i>Datos guardados en este dispositivo</div></header>
+  <header class="top"><div class="brand"><div class="brand-mark">⚡</div><div><h1>Brujas Redes</h1><p>Historias del partido, en segundos</p></div></div><div class="status" id="syncStatus"><i></i>Conectando con la nube…</div></header>
   <nav class="tabs"><button class="tab active" data-view="setup">Preparar partido</button><button class="tab" data-view="live">Panel en vivo</button><button class="tab" data-view="designer">Editar formatos</button></nav>
 
   <section id="setup" class="view active">
@@ -232,7 +232,7 @@ let editFormat='upcoming',editElement='title',floatingOpen=false;
 const applicable={upcoming:['title','line','homeLogo','center','awayLogo','homeName','awayName','day','time','place'],start:['title','line','homeLogo','center','awayLogo','homeName','awayName'],goal:['title','line','homeLogo','center','awayLogo','homeName','awayName','detail'],halftime:['title','line','homeLogo','center','awayLogo','homeName','awayName'],secondhalf:['title','line','homeLogo','center','awayLogo','homeName','awayName'],final:['title','line','homeLogo','center','awayLogo','homeName','awayName']};
 const elementNames={title:'Título',line:'Línea naranja',homeLogo:'Escudo local',center:'VS / marcador',awayLogo:'Escudo visitante',homeName:'Nombre local',awayName:'Nombre visitante',detail:'Goleador y minuto',day:'Día',time:'Hora',place:'Lugar'};
 const applicableFor=f=>[...applicable[f],...Object.keys(formats[f].elements).filter(k=>k.startsWith('custom'))];
-const save=()=>{localStorage.setItem('brujasMatch',JSON.stringify(state));localStorage.setItem('brujasFormats',JSON.stringify(formats));localStorage.setItem('brujasPalette',JSON.stringify(palette));localStorage.setItem('brujasDesigns',JSON.stringify(savedDesigns));localStorage.setItem('brujasActiveDesign',activeDesign)};
+const save=()=>{localStorage.setItem('brujasMatch',JSON.stringify(state));localStorage.setItem('brujasFormats',JSON.stringify(formats));localStorage.setItem('brujasPalette',JSON.stringify(palette));localStorage.setItem('brujasDesigns',JSON.stringify(savedDesigns));localStorage.setItem('brujasActiveDesign',activeDesign);window.queueBrujasCloudSave?.()};
 const esc=s=>String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const sampleEvent=f=>({type:f,title:titleDefaults[f],homeScore:f==='start'||f==='upcoming'?0:2,awayScore:f==='start'||f==='upcoming'?0:1,scorer:f==='goal'?'JUGADOR BRUJAS':'',minute:f==='goal'?'37':'',icon:'●'});
 function itemStyle(k,c){const e=c.elements[k];return `left:${e.x}%;top:${e.y}%;font-size:${e.size/10.8}cqw;color:${e.color};font-family:'${e.font}',sans-serif;font-weight:${e.weight};letter-spacing:${e.spacing/10.8}cqw`}
@@ -270,7 +270,12 @@ function renderPresetChooser(){
 function switchView(id){$$('.tab').forEach(x=>x.classList.toggle('active',x.dataset.view===id));$$('.view').forEach(x=>x.classList.toggle('active',x.id===id));scrollTo({top:0,behavior:'smooth'})}
 $$('.tab').forEach(b=>b.onclick=()=>switchView(b.dataset.view));
 ['homeName','awayName','matchDay','matchTime','matchPlace'].forEach(id=>$('#'+id).oninput=e=>{state[id]=e.target.value;render()});
-function loadImage(input,key){const f=input.files[0];if(!f)return;const r=new FileReader;r.onload=()=>{state[key]=r.result;render()};r.readAsDataURL(f)}
+function loadImage(input,key){
+ const f=input.files[0];if(!f)return;
+ const reader=new FileReader;
+ reader.onload=()=>{const img=new Image;img.onload=()=>{const max=420,scale=Math.min(1,max/Math.max(img.width,img.height)),canvas=document.createElement('canvas');canvas.width=Math.round(img.width*scale);canvas.height=Math.round(img.height*scale);const ctx=canvas.getContext('2d');ctx.drawImage(img,0,0,canvas.width,canvas.height);state[key]=canvas.toDataURL('image/webp',.82);render()};img.onerror=()=>{state[key]=reader.result;render()};img.src=reader.result};
+ reader.readAsDataURL(f)
+}
 $('#homeLogo').onchange=e=>loadImage(e.target,'homeLogo');$('#awayLogo').onchange=e=>loadImage(e.target,'awayLogo');
 function addPlayer(){const p=$('#playerInput').value.trim();if(!p)return;state.players.push(p);$('#playerInput').value='';render()}
 $('#addPlayer').onclick=addPlayer;$('#playerInput').onkeydown=e=>{if(e.key==='Enter')addPlayer()};$('#playerList').onclick=e=>{if(e.target.dataset.remove!==undefined){state.players.splice(+e.target.dataset.remove,1);render()}};
@@ -335,7 +340,59 @@ $('#downloadStory').onclick=async()=>{if(!selectedEvent)return;const ev=selected
  if(f==='upcoming'){drawText(x,'▣  '+(state.matchDay||'DÍA').toUpperCase(),cfg.elements.day);drawText(x,'◷  '+(state.matchTime||'HORA').toUpperCase(),cfg.elements.time);drawText(x,(state.matchPlace||'LUGAR').toUpperCase(),cfg.elements.place)}
  Object.keys(cfg.elements).filter(k=>k.startsWith('custom')).forEach(k=>{const e=cfg.elements[k];if(e.type==='line'){x.fillStyle=e.color;x.fillRect(e.x*10.8-e.size/2,e.y*19.2-e.height/2,e.size,e.height)}else drawText(x,(e.content||'TEXTO').toUpperCase(),e)});
  const a=document.createElement('a');a.download=`historia-${f}-${Date.now()}.png`;a.href=c.toDataURL('image/png');a.click();toast('Historia descargada')};
+window.getBrujasCloudData=()=>({state,formats,palette,savedDesigns,activeDesign});
+window.applyBrujasCloudData=data=>{
+ state={...fresh,...(data.state||{})};
+ formats=data.formats||makeDefaults();
+ Object.keys(formatNames).forEach(f=>hydrateFormat(f));
+ palette=Array.isArray(data.palette)?data.palette:palette;
+ savedDesigns=data.savedDesigns||{};
+ activeDesign=data.activeDesign||'';
+ render()
+};
 render();
+</script>
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import {getFirestore,doc,onSnapshot,setDoc,serverTimestamp} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+const firebaseConfig={
+ apiKey:"AIzaSyDvLc4y_yLL-omKQaNnU2UkBMEyVCmbnaM",
+ authDomain:"brujas-redes.firebaseapp.com",
+ projectId:"brujas-redes",
+ storageBucket:"brujas-redes.firebasestorage.app",
+ messagingSenderId:"704431450868",
+ appId:"1:704431450868:web:939ee0977c967459074ca1"
+};
+const db=getFirestore(initializeApp(firebaseConfig));
+const sharedRef=doc(db,"shared","brujas-redes");
+const status=document.getElementById("syncStatus");
+let lastCloudJson="",saveTimer=null,applyingCloud=false;
+const payload=()=>window.getBrujasCloudData();
+const setStatus=(text,error=false)=>{if(!status)return;status.lastChild.textContent=text;status.style.color=error?"#ff9696":"";const dot=status.querySelector("i");if(dot)dot.style.background=error?"#ff5d5d":""};
+window.queueBrujasCloudSave=()=>{
+ if(applyingCloud)return;
+ clearTimeout(saveTimer);
+ saveTimer=setTimeout(async()=>{
+  const data=payload(),json=JSON.stringify(data);
+  if(json===lastCloudJson)return;
+  setStatus("Guardando…");
+  try{await setDoc(sharedRef,{...data,updatedAt:serverTimestamp()});lastCloudJson=json;setStatus("Sincronizado")}
+  catch(error){console.error("No se pudo sincronizar",error);setStatus("Error de sincronización",true)}
+ },650)
+};
+onSnapshot(sharedRef,snapshot=>{
+ if(snapshot.exists()){
+  const raw=snapshot.data();
+  const data={state:raw.state,formats:raw.formats,palette:raw.palette,savedDesigns:raw.savedDesigns,activeDesign:raw.activeDesign};
+  const json=JSON.stringify(data);
+  if(json!==lastCloudJson){lastCloudJson=json;applyingCloud=true;window.applyBrujasCloudData(data);applyingCloud=false}
+  setStatus("Sincronizado")
+ }else{
+  lastCloudJson="";
+  window.queueBrujasCloudSave()
+ }
+},error=>{console.error("No se pudo leer Firestore",error);setStatus("Sin conexión con la nube",true)});
 </script>
 </body>
 </html>
