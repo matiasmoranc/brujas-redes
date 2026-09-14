@@ -16,7 +16,7 @@
     .modal{position:fixed;inset:0;background:#020503d9;backdrop-filter:blur(7px);display:none;align-items:flex-end;justify-content:center;padding:18px;z-index:20}.modal.open{display:flex}.sheet{width:100%;max-width:520px;background:#141c17;border:1px solid #344138;border-radius:25px;padding:22px;animation:up .22s ease}.sheet-head{display:flex;justify-content:space-between;align-items:center}.sheet h3{margin:0}.close{background:#263129;color:white;border:0;border-radius:50%;width:34px;height:34px}.sheet-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px}.notice{background:#172119;border:1px solid #314236;color:#c7d3ca;border-radius:14px;padding:12px;font-size:12px;margin-top:14px}.toast{position:fixed;left:50%;bottom:22px;transform:translate(-50%,120px);background:var(--green);color:#081009;padding:12px 18px;border-radius:99px;font-weight:800;transition:.25s;z-index:40}.toast.show{transform:translate(-50%,0)}@keyframes up{from{transform:translateY(30px);opacity:0}}
     .designer-grid{display:grid;grid-template-columns:1fr 340px;gap:18px}.editor-row{display:grid;grid-template-columns:130px 1fr 54px;align-items:center;gap:10px;margin:14px 0}.editor-row output{color:var(--green);font-size:12px;text-align:right}.editor-row input[type=range]{padding:0;accent-color:var(--green)}.editor-actions{display:flex;gap:10px;margin-top:22px}.editor-actions button{flex:1}.story-item{position:absolute;transform:translate(-50%,-50%);margin:0!important}.story-title{white-space:nowrap;font-weight:500;letter-spacing:.18em}.story-line{height:4px}.story-center{font-weight:950;font-style:italic;white-space:nowrap}.story-name{font-weight:950;white-space:nowrap}.story-home-name{color:#ff5a00}.story-detail{font-weight:800;white-space:nowrap}.upcoming-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px}.format-note{font-size:12px;color:var(--muted);line-height:1.5}
     @media(max-width:760px){.app{padding:16px 12px 80px}.setup-grid,.live-grid,.designer-grid{grid-template-columns:1fr}.preview-shell{position:static}.card{padding:17px}.form-grid{grid-template-columns:1fr}.field.full{grid-column:auto}.top .status{display:none}.tabs{width:100%}.tab{flex:1;padding:10px 5px;font-size:11px}.preview-shell{order:-1}.phone{max-width:230px}.event-grid{grid-template-columns:1fr 1fr}.editor-row{grid-template-columns:105px 1fr 45px}.story-title{letter-spacing:.12em}}
-    .story{container-type:inline-size}
+    .story{container-type:inline-size}.style-controls{margin-top:18px;padding-top:18px;border-top:1px solid var(--line)}.color-tools{display:grid;grid-template-columns:1fr auto;gap:9px}.color-tools input[type=color]{height:46px;padding:5px}.palette{display:flex;flex-wrap:wrap;gap:9px;margin-top:12px}.swatch{width:34px;height:34px;border-radius:50%;border:3px solid #344139;box-shadow:0 0 0 1px #ffffff25;position:relative}.swatch.active:after{content:"✓";position:absolute;inset:0;display:grid;place-items:center;color:white;text-shadow:0 1px 4px #000;font-weight:900}.apply-style{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
   </style>
 </head>
 <body>
@@ -65,7 +65,17 @@
         <div class="section-title">Posición y tamaño</div>
         <div class="editor-row"><label>Horizontal</label><input id="posX" type="range" min="0" max="100"><output id="posXOut"></output></div>
         <div class="editor-row"><label>Vertical</label><input id="posY" type="range" min="0" max="100"><output id="posYOut"></output></div>
-        <div class="editor-row"><label>Tamaño</label><input id="elementSize" type="range" min="8" max="300"><output id="sizeOut"></output></div>
+        <div class="editor-row"><label id="sizeLabel">Tamaño</label><input id="elementSize" type="range" min="8" max="400"><output id="sizeOut"></output></div>
+        <div class="style-controls">
+          <div class="form-grid">
+            <div class="field"><label>Fuente</label><select id="fontSelect"></select></div>
+            <div class="field"><label>Aplicar fuente a</label><select id="fontScope"><option value="element">Este elemento</option><option value="format">Todo este formato</option><option value="all">Todos los formatos</option></select></div>
+          </div>
+          <div class="section-title">Color del elemento</div>
+          <div class="color-tools"><input id="colorPicker" type="color"><button id="addColor" class="secondary">+ Guardar color</button></div>
+          <div id="palette" class="palette"></div>
+          <div class="apply-style"><select id="colorScope"><option value="element">Solo este elemento</option><option value="format">Textos de este formato</option><option value="all">Textos de todos los formatos</option></select><button id="applyColor" class="secondary">Aplicar color</button></div>
+        </div>
         <p class="format-note">Las posiciones se guardan en porcentajes para que el diseño mantenga la proporción en la vista previa y en la imagen descargada de 1080 × 1920.</p>
         <div class="editor-actions"><button id="resetFormat" class="danger">Restaurar formato</button><button id="saveFormat" class="primary">Guardar cambios</button></div>
       </div>
@@ -187,18 +197,21 @@ const formatTweaks={
 };
 function makeDefaults(){const o={};Object.keys(formatNames).forEach(f=>{o[f]={title:titleDefaults[f],elements:JSON.parse(JSON.stringify(baseElements))};Object.entries(formatTweaks[f]||{}).forEach(([k,v])=>Object.assign(o[f].elements[k],v))});return o}
 let formats={...makeDefaults(),...JSON.parse(localStorage.getItem('brujasFormats')||'{}')};
-Object.keys(formatNames).forEach(f=>{formats[f]=formats[f]||makeDefaults()[f];formats[f].elements={...JSON.parse(JSON.stringify(baseElements)),...formats[f].elements}});
+const defaultColor=k=>k==='line'||k==='homeName'?'#ff5a00':'#090909';
+Object.keys(formatNames).forEach(f=>{formats[f]=formats[f]||makeDefaults()[f];formats[f].elements={...JSON.parse(JSON.stringify(baseElements)),...formats[f].elements};Object.entries(formats[f].elements).forEach(([k,e])=>{e.font=e.font||'Arial';e.color=e.color||defaultColor(k)})});
+const fonts=['Arial','Impact','Georgia','Trebuchet MS','Verdana','Times New Roman','Courier New','Tahoma'];
+let palette=JSON.parse(localStorage.getItem('brujasPalette')||'["#ff5a00","#090909","#ffffff","#1b5e20","#1565c0","#fbc02d"]');
 let editFormat='upcoming',editElement='title';
 const applicable={upcoming:['title','line','homeLogo','center','awayLogo','homeName','awayName','day','time','place'],start:['title','line','homeLogo','center','awayLogo','homeName','awayName'],goal:['title','line','homeLogo','center','awayLogo','homeName','awayName','detail'],halftime:['title','line','homeLogo','center','awayLogo','homeName','awayName'],secondhalf:['title','line','homeLogo','center','awayLogo','homeName','awayName'],final:['title','line','homeLogo','center','awayLogo','homeName','awayName']};
 const elementNames={title:'Título',line:'Línea naranja',homeLogo:'Escudo local',center:'VS / marcador',awayLogo:'Escudo visitante',homeName:'Nombre local',awayName:'Nombre visitante',detail:'Goleador y minuto',day:'Día',time:'Hora',place:'Lugar'};
-const save=()=>{localStorage.setItem('brujasMatch',JSON.stringify(state));localStorage.setItem('brujasFormats',JSON.stringify(formats))};
+const save=()=>{localStorage.setItem('brujasMatch',JSON.stringify(state));localStorage.setItem('brujasFormats',JSON.stringify(formats));localStorage.setItem('brujasPalette',JSON.stringify(palette))};
 const esc=s=>String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const sampleEvent=f=>({type:f,title:titleDefaults[f],homeScore:f==='start'||f==='upcoming'?0:2,awayScore:f==='start'||f==='upcoming'?0:1,scorer:f==='goal'?'JUGADOR BRUJAS':'',minute:f==='goal'?'37':'',icon:'●'});
-function itemStyle(k,c){const e=c.elements[k];return `left:${e.x}%;top:${e.y}%;font-size:${e.size/10.8}cqw`}
+function itemStyle(k,c){const e=c.elements[k];return `left:${e.x}%;top:${e.y}%;font-size:${e.size/10.8}cqw;color:${e.color};font-family:'${e.font}',sans-serif`}
 function logoHTML(src,k,c){const e=c.elements[k],sty=`left:${e.x}%;top:${e.y}%;width:${e.size/10.8}cqw;height:${e.size/10.8}cqw`;return src?`<img class="story-item" style="${sty};object-fit:contain" src="${src}" alt="">`:`<div class="story-item placeholder-logo" style="${sty}">ESCUDO</div>`}
 function storyHTML(ev){
  const f=formatNames[ev.type]?ev.type:'start',c=formats[f],score=`${ev.homeScore??state.homeScore}–${ev.awayScore??state.awayScore}`,mid=(f==='start'||f==='upcoming')?'VS':score;
- let h=`<div class="story-item story-title" style="${itemStyle('title',c)}">${esc(c.title)}</div><div class="story-item story-line" style="left:${c.elements.line.x}%;top:${c.elements.line.y}%;width:${c.elements.line.size/10.8}cqw"></div>`;
+ let h=`<div class="story-item story-title" style="${itemStyle('title',c)}">${esc(c.title)}</div><div class="story-item story-line" style="left:${c.elements.line.x}%;top:${c.elements.line.y}%;width:${c.elements.line.size/10.8}cqw;background:${c.elements.line.color}"></div>`;
  h+=logoHTML(state.homeLogo,'homeLogo',c)+`<div class="story-item story-center" style="${itemStyle('center',c)}">${mid}</div>`+logoHTML(state.awayLogo,'awayLogo',c);
  h+=`<div class="story-item story-name story-home-name" style="${itemStyle('homeName',c)}">${esc(state.homeName||'LOCAL')}</div><div class="story-item story-name" style="${itemStyle('awayName',c)}">${esc(state.awayName||'VISITANTE')}</div>`;
  if(f==='goal')h+=`<div class="story-item story-detail" style="${itemStyle('detail',c)}">${esc(ev.scorer||'JUGADOR BRUJAS')} · ${esc(ev.minute||37)}'</div>`;
@@ -241,23 +254,31 @@ function renderDesigner(){
  $('#formatSelect').value=editFormat;const els=applicable[editFormat];if(!els.includes(editElement))editElement=els[0];
  $('#elementSelect').innerHTML=els.map(k=>`<option value="${k}">${elementNames[k]}</option>`).join('');$('#elementSelect').value=editElement;
  $('#customTitle').value=formats[editFormat].title;const e=formats[editFormat].elements[editElement];
- $('#posX').value=e.x;$('#posY').value=e.y;$('#elementSize').value=e.size;$('#posXOut').value=e.x+'%';$('#posYOut').value=e.y+'%';$('#sizeOut').value=e.size+'px';
+ if(!$('#fontSelect').options.length)$('#fontSelect').innerHTML=fonts.map(f=>`<option value="${f}" style="font-family:'${f}'">${f}</option>`).join('');
+ $('#posX').value=e.x;$('#posY').value=e.y;$('#elementSize').value=e.size;$('#posXOut').value=e.x+'%';$('#posYOut').value=e.y+'%';$('#sizeOut').value=e.size+'px';$('#sizeLabel').textContent=editElement==='line'?'Ancho de línea':(editElement.includes('Logo')?'Tamaño del escudo':'Tamaño');$('#fontSelect').value=e.font;$('#fontSelect').disabled=editElement==='line'||editElement.includes('Logo');$('#colorPicker').value=e.color;renderPalette();
  $('#designerStory').innerHTML=storyHTML(sampleEvent(editFormat))
 }
 $('#formatSelect').onchange=e=>{editFormat=e.target.value;editElement=applicable[editFormat][0];renderDesigner()};$('#elementSelect').onchange=e=>{editElement=e.target.value;renderDesigner()};
 $('#customTitle').oninput=e=>{formats[editFormat].title=e.target.value;renderDesigner()};
 ['posX','posY','elementSize'].forEach(id=>$('#'+id).oninput=e=>{const key=id==='posX'?'x':id==='posY'?'y':'size';formats[editFormat].elements[editElement][key]=+e.target.value;renderDesigner()});
-$('#saveFormat').onclick=()=>{save();render();toast('Formato guardado')};$('#resetFormat').onclick=()=>{if(!confirm('¿Restaurar este formato al diseño original?'))return;formats[editFormat]=makeDefaults()[editFormat];render();toast('Formato restaurado')};
+function targets(scope,includeLine=false){let out=[];const fs=scope==='all'?Object.keys(formats):[editFormat];fs.forEach(f=>applicable[f].forEach(k=>{if((includeLine||k!=='line')&&!k.includes('Logo'))out.push(formats[f].elements[k])}));return scope==='element'?[formats[editFormat].elements[editElement]]:out}
+$('#fontSelect').onchange=e=>{targets($('#fontScope').value).forEach(x=>x.font=e.target.value);renderDesigner()};
+function renderPalette(){$('#palette').innerHTML=palette.map(c=>`<button class="swatch ${c.toLowerCase()===$('#colorPicker').value.toLowerCase()?'active':''}" data-color="${c}" style="background:${c}" title="${c}"></button>`).join('')}
+$('#palette').onclick=e=>{if(e.target.dataset.color){$('#colorPicker').value=e.target.dataset.color;renderPalette()}};
+$('#colorPicker').oninput=renderPalette;
+$('#addColor').onclick=()=>{const c=$('#colorPicker').value.toLowerCase();if(!palette.includes(c))palette.push(c);save();renderPalette();toast('Color guardado')};
+$('#applyColor').onclick=()=>{const scope=$('#colorScope').value,color=$('#colorPicker').value;if(scope==='element')formats[editFormat].elements[editElement].color=color;else targets(scope,true).forEach(x=>x.color=color);save();renderDesigner();toast('Color aplicado')};
+$('#saveFormat').onclick=()=>{save();render();toast('Formato guardado')};$('#resetFormat').onclick=()=>{if(!confirm('¿Restaurar este formato al diseño original?'))return;formats[editFormat]=makeDefaults()[editFormat];Object.entries(formats[editFormat].elements).forEach(([k,e])=>{e.font='Arial';e.color=defaultColor(k)});render();toast('Formato restaurado')};
 const imgLoad=src=>new Promise(ok=>{if(!src)return ok(null);const i=new Image;i.onload=()=>ok(i);i.onerror=()=>ok(null);i.src=src});
 function drawContain(ctx,img,x,y,size){const r=Math.min(size/img.width,size/img.height),w=img.width*r,h=img.height*r;ctx.drawImage(img,x-w/2,y-h/2,w,h)}
-function drawText(ctx,text,e,color='#090909',weight=800){ctx.fillStyle=color;ctx.font=`${weight} ${e.size}px Arial`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(text,e.x*10.8,e.y*19.2)}
+function drawText(ctx,text,e,weight=800){ctx.fillStyle=e.color;ctx.font=`${weight} ${e.size}px "${e.font}"`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(text,e.x*10.8,e.y*19.2)}
 $('#downloadStory').onclick=async()=>{if(!selectedEvent)return;const ev=selectedEvent,f=ev.type,cfg=formats[f],c=$('#canvas'),x=c.getContext('2d');const [base,hi,ai]=await Promise.all([imgLoad('assets/story-base.jpg'),imgLoad(state.homeLogo),imgLoad(state.awayLogo)]);if(base)x.drawImage(base,0,0,1080,1920);else{x.fillStyle='#fff';x.fillRect(0,0,1080,1920)}
- drawText(x,cfg.title.toUpperCase(),cfg.elements.title,'#090909',500);const ln=cfg.elements.line;x.fillStyle='#ff5a00';x.fillRect(ln.x*10.8-ln.size/2,ln.y*19.2-3,ln.size,6);
+ drawText(x,cfg.title.toUpperCase(),cfg.elements.title,500);const ln=cfg.elements.line;x.fillStyle=ln.color;x.fillRect(ln.x*10.8-ln.size/2,ln.y*19.2-3,ln.size,6);
  if(hi)drawContain(x,hi,cfg.elements.homeLogo.x*10.8,cfg.elements.homeLogo.y*19.2,cfg.elements.homeLogo.size);if(ai)drawContain(x,ai,cfg.elements.awayLogo.x*10.8,cfg.elements.awayLogo.y*19.2,cfg.elements.awayLogo.size);
  drawText(x,(f==='start'||f==='upcoming')?'VS':`${ev.homeScore}–${ev.awayScore}`,cfg.elements.center);
- drawText(x,(state.homeName||'LOCAL').toUpperCase(),cfg.elements.homeName,'#ff5a00',900);drawText(x,(state.awayName||'VISITANTE').toUpperCase(),cfg.elements.awayName,'#090909',900);
+ drawText(x,(state.homeName||'LOCAL').toUpperCase(),cfg.elements.homeName,900);drawText(x,(state.awayName||'VISITANTE').toUpperCase(),cfg.elements.awayName,900);
  if(f==='goal')drawText(x,`${(ev.scorer||'JUGADOR').toUpperCase()} · ${ev.minute}'`,cfg.elements.detail);
- if(f==='upcoming'){drawText(x,'▣  '+(state.matchDay||'DÍA').toUpperCase(),cfg.elements.day);drawText(x,'◷  '+(state.matchTime||'HORA').toUpperCase(),cfg.elements.time);drawText(x,(state.matchPlace||'LUGAR').toUpperCase(),cfg.elements.place,'#090909',500)}
+ if(f==='upcoming'){drawText(x,'▣  '+(state.matchDay||'DÍA').toUpperCase(),cfg.elements.day);drawText(x,'◷  '+(state.matchTime||'HORA').toUpperCase(),cfg.elements.time);drawText(x,(state.matchPlace||'LUGAR').toUpperCase(),cfg.elements.place,500)}
  const a=document.createElement('a');a.download=`historia-${f}-${Date.now()}.png`;a.href=c.toDataURL('image/png');a.click();toast('Historia descargada')};
 render();
 </script>
