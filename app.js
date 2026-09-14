@@ -224,7 +224,9 @@ function timerValue(){
 function timerMinuteValue(){return Math.min(120,Math.floor(timerValue()/60))}
 function updateTimerDisplay(){
  const total=timerValue(),minutes=Math.floor(total/60),seconds=total%60;
- const display=$('#timerDisplay'),label=$('#timerMinute'),input=$('#timerEdit');
+ const display=$('#timerDisplay'),label=$('#timerMinute'),input=$('#timerEdit'),startButton=$('#timerStart'),pauseButton=$('#timerPause');
+ if(startButton){startButton.classList.toggle('timer-active',state.timerRunning);startButton.setAttribute('aria-pressed',String(state.timerRunning))}
+ if(pauseButton){pauseButton.classList.toggle('timer-active',!state.timerRunning);pauseButton.setAttribute('aria-pressed',String(!state.timerRunning))}
  if(display)display.textContent=`${String(minutes).padStart(2,'0')}:${String(seconds).padStart(2,'0')}`;
  if(label)label.textContent=`MIN ${minutes}' · TOCÁ EL TIEMPO PARA EDITAR`;
  if(input&&document.activeElement!==input)input.value=minutes;
