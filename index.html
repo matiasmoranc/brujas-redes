@@ -297,6 +297,16 @@ function activateDesign(name){if(name&&savedDesigns[name]){formats=JSON.parse(JS
 function renderPresetChooser(){
  $('#presetChooser').innerHTML=presetOptions();$('#presetChooser').value=savedDesigns[activeDesign]?activeDesign:''
 }
+function teamOptions(selected=''){return '<option value="">Carga manual / sin seleccionar</option>'+teams.map(t=>`<option value="${t.id}" ${t.id===selected?'selected':''}>${esc(t.name)}</option>`).join('')}
+function selectedTeamId(side){const found=teams.find(t=>t.name===state[side+'Name']&&t.logo===state[side+'Logo']);return found?.id||''}
+function renderTeams(){
+ const home=$('#homeTeamSelect'),away=$('#awayTeamSelect');
+ if(home){home.innerHTML=teamOptions(selectedTeamId('home'));away.innerHTML=teamOptions(selectedTeamId('away'))}
+ const lib=$('#teamLibrary');if(!lib)return;
+ lib.innerHTML=teams.length?teams.map(t=>`<article class="team-card"><img src="${t.logo||placeholder()}" alt=""><strong>${esc(t.name)}</strong><div class="team-card-actions"><button class="secondary" data-team-action="home" data-id="${t.id}">Usar local</button><button class="secondary" data-team-action="away" data-id="${t.id}">Usar visita</button><button class="secondary" data-team-action="edit" data-id="${t.id}">Editar</button><button class="danger" data-team-action="delete" data-id="${t.id}">Eliminar</button></div></article>`).join(''):'<div class="empty-teams">Todavía no guardaste equipos.</div>'
+}
+function useTeam(id,side){const t=teams.find(x=>x.id===id);if(!t)return;state[side+'Name']=t.name;state[side+'Logo']=t.logo;render();toast('Equipo cargado como '+(side==='home'?'local':'visitante'))}
+function resetTeamForm(){editingTeamId=null;teamLogoData='';$('#teamName').value='';$('#teamLogo').value='';$('#teamThumb').src=placeholder();$('#teamFormTitle').textContent='Agregar equipo';$('#saveTeam').textContent='Guardar equipo';$('#cancelTeamEdit').classList.add('hidden')}
 function switchView(id){$$('.tab').forEach(x=>x.classList.toggle('active',x.dataset.view===id));$$('.view').forEach(x=>x.classList.toggle('active',x.id===id));scrollTo({top:0,behavior:'smooth'})}
 $$('.tab').forEach(b=>b.onclick=()=>switchView(b.dataset.view));
 ['homeName','awayName','matchDay','matchTime','matchPlace'].forEach(id=>$('#'+id).oninput=e=>{state[id]=e.target.value;render()});
