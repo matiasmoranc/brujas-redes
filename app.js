@@ -79,12 +79,13 @@ const goalElements={
 };
 const resultFormats=['halftime','secondhalf','final'];
 const resultElements=Object.fromEntries(['title','line','homeLogo','center','awayLogo','homeScore','awayScore'].map(k=>[k,goalElements[k]]));
+const finalElements={...resultElements,homeScorers:{x:25,y:63,size:28,font:'Montserrat',color:'#090909',weight:700,spacing:0}};
 
 const formatTweaks={
  upcoming:{title:{y:24},line:{y:27},homeLogo:{y:43},center:{y:43},awayLogo:{y:43},homeName:{y:55},awayName:{y:55}},
  start:{},goal:{},halftime:{},secondhalf:{},final:{}
 };
-function makeDefaults(){const o={};Object.keys(formatNames).forEach(f=>{o[f]={title:titleDefaults[f],elements:JSON.parse(JSON.stringify(baseElements))};Object.entries(formatTweaks[f]||{}).forEach(([k,v])=>Object.assign(o[f].elements[k],v))});o.goal={title:'PRIMER TIEMPO',layoutVersion:2,elements:JSON.parse(JSON.stringify(goalElements))};resultFormats.forEach(f=>o[f]={title:titleDefaults[f],layoutVersion:2,elements:JSON.parse(JSON.stringify(resultElements))});return o}
+function makeDefaults(){const o={};Object.keys(formatNames).forEach(f=>{o[f]={title:titleDefaults[f],elements:JSON.parse(JSON.stringify(baseElements))};Object.entries(formatTweaks[f]||{}).forEach(([k,v])=>Object.assign(o[f].elements[k],v))});o.goal={title:'PRIMER TIEMPO',layoutVersion:2,elements:JSON.parse(JSON.stringify(goalElements))};resultFormats.forEach(f=>o[f]={title:titleDefaults[f],layoutVersion:2,elements:JSON.parse(JSON.stringify(f==='final'?finalElements:resultElements))});return o}
 let formats={...makeDefaults(),...JSON.parse(localStorage.getItem('brujasFormats')||'{}')};
 const defaultColor=k=>k==='line'||k==='homeName'?'#ff5a00':'#090909',defaultWeight=k=>k==='title'||k==='place'?400:(k==='homeName'||k==='awayName'||k==='center'?900:700);
 function hydrateFormat(f){
@@ -96,7 +97,7 @@ function hydrateFormat(f){
   const custom=Object.fromEntries(Object.entries(formats[f].elements||{}).filter(([k])=>k.startsWith('custom')));
   formats[f]={title:titleDefaults[f],layoutVersion:2,elements:{...JSON.parse(JSON.stringify(resultElements)),...custom}}
  }else{
-  const defaults=f==='goal'?goalElements:(resultFormats.includes(f)?resultElements:baseElements);
+  const defaults=f==='goal'?goalElements:(f==='final'?finalElements:(resultFormats.includes(f)?resultElements:baseElements));
   formats[f].elements={...JSON.parse(JSON.stringify(defaults)),...formats[f].elements}
  }
  Object.entries(formats[f].elements).forEach(([k,e])=>{e.font=e.font||'Arial';e.color=e.color||defaultColor(k);e.weight=e.weight||defaultWeight(k);e.spacing=e.spacing??0;if(k==='line'||e.type==='line')e.height=e.height||6})
@@ -110,8 +111,8 @@ let teams=JSON.parse(localStorage.getItem('brujasTeams')||'[]'),editingTeamId=nu
 if(!Object.keys(savedDesigns).length){const names=new Set;Object.values(oldPresets).forEach(group=>Object.keys(group||{}).forEach(n=>names.add(n)));names.forEach(name=>{savedDesigns[name]={formats:{},syncGeometry:{}};Object.keys(formatNames).forEach(f=>savedDesigns[name].formats[f]=JSON.parse(JSON.stringify(oldPresets[f]?.[name]||makeDefaults()[f]))) });activeDesign=Object.values(oldActive).find(n=>savedDesigns[n])||''}
 Object.values(savedDesigns).forEach(d=>d.syncGeometry=d.syncGeometry||{});
 let editFormat='upcoming',editElement='title',floatingOpen=false;
-const applicable={upcoming:['title','line','homeLogo','center','awayLogo','homeName','awayName','day','time','place'],start:['title','line','homeLogo','center','awayLogo','homeName','awayName'],goal:['title','line','homeLogo','center','awayLogo','homeScore','awayScore','minute','scorer','goalText'],halftime:['title','line','homeLogo','center','awayLogo','homeScore','awayScore'],secondhalf:['title','line','homeLogo','center','awayLogo','homeScore','awayScore'],final:['title','line','homeLogo','center','awayLogo','homeScore','awayScore']};
-const elementNames={title:'Título',line:'Línea naranja',homeLogo:'Escudo local',center:'VS / marcador',awayLogo:'Escudo visitante',homeName:'Nombre local',awayName:'Nombre visitante',detail:'Detalle',homeScore:'Goles local',awayScore:'Goles visitante',minute:'Minuto',scorer:'Goleador local',goalText:'Texto GOOOL',day:'Día',time:'Hora',place:'Lugar'};
+const applicable={upcoming:['title','line','homeLogo','center','awayLogo','homeName','awayName','day','time','place'],start:['title','line','homeLogo','center','awayLogo','homeName','awayName'],goal:['title','line','homeLogo','center','awayLogo','homeScore','awayScore','minute','scorer','goalText'],halftime:['title','line','homeLogo','center','awayLogo','homeScore','awayScore'],secondhalf:['title','line','homeLogo','center','awayLogo','homeScore','awayScore'],final:['title','line','homeLogo','center','awayLogo','homeScore','awayScore','homeScorers']};
+const elementNames={title:'Título',line:'Línea naranja',homeLogo:'Escudo local',center:'VS / marcador',awayLogo:'Escudo visitante',homeName:'Nombre local',awayName:'Nombre visitante',detail:'Detalle',homeScore:'Goles local',awayScore:'Goles visitante',minute:'Minuto',scorer:'Goleador local',goalText:'Texto GOOOL',homeScorers:'Goleadores del local',day:'Día',time:'Hora',place:'Lugar'};
 const applicableFor=f=>[...applicable[f],...Object.keys(formats[f].elements).filter(k=>k.startsWith('custom'))];
 const save=()=>{localStorage.setItem('brujasMatch',JSON.stringify(state));localStorage.setItem('brujasFormats',JSON.stringify(formats));localStorage.setItem('brujasPalette',JSON.stringify(palette));localStorage.setItem('brujasDesigns',JSON.stringify(savedDesigns));localStorage.setItem('brujasActiveDesign',activeDesign);localStorage.setItem('brujasTeams',JSON.stringify(teams));window.queueBrujasCloudSave?.()};
 const esc=s=>String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
@@ -125,6 +126,12 @@ function scoreForEvent(ev){
  if(index<0)return {home:ev.homeScore??state.homeScore,away:ev.awayScore??state.awayScore};
  const events=state.events.slice(0,index+1);
  return {home:events.filter(item=>item.type==='goal'&&item.side==='home').length,away:events.filter(item=>item.type==='goal'&&item.side==='away').length}
+}
+function homeScorersForEvent(ev){
+ const index=state.events.findIndex(item=>item===ev||(item.time&&ev.time&&item.time===ev.time));
+ const events=index<0?(ev.type==='final'?state.events:[]):state.events.slice(0,index+1);
+ const goals=events.filter(item=>item.type==='goal'&&item.side==='home'&&item.scorer).map(item=>({minute:Number(item.minute)||0,scorer:item.scorer})).sort((a,b)=>a.minute-b.minute);
+ return goals.length||index>=0?goals:[{minute:37,scorer:'Matías Moran'},{minute:40,scorer:'Juan Pablo'}]
 }
 function goalPeriod(ev){
  const index=state.events.findIndex(item=>item===ev||(item.time&&ev.time&&item.time===ev.time));
@@ -144,6 +151,10 @@ function storyHTML(ev,interactive=false){
  h+=logoHTML(state.homeLogo,'homeLogo',c,interactive)+`<div class="story-item story-center${editClass('center',interactive)}" data-element="${interactive?'center':''}" style="${itemStyle('center',c)}">${isScoreboard?'VS':mid}</div>`+logoHTML(state.awayLogo,'awayLogo',c,interactive);
  if(isScoreboard){
   h+=`<div class="story-item story-detail${editClass('homeScore',interactive)}" data-element="${interactive?'homeScore':''}" style="${itemStyle('homeScore',c)}">${eventScore.home}</div><div class="story-item story-detail${editClass('awayScore',interactive)}" data-element="${interactive?'awayScore':''}" style="${itemStyle('awayScore',c)}">${eventScore.away}</div>`;
+  if(f==='final'){
+   const scorers=homeScorersForEvent(ev);
+   if(scorers.length)h+=`<div class="story-item story-detail story-scorers${editClass('homeScorers',interactive)}" data-element="${interactive?'homeScorers':''}" style="${itemStyle('homeScorers',c)}">${scorers.map(goal=>`${esc(goal.minute)}’ ${esc(goal.scorer)}`).join('<br>')}</div>`
+  }
   if(f==='goal'){
    h+=`<div class="story-item story-detail${editClass('minute',interactive)}" data-element="${interactive?'minute':''}" style="${itemStyle('minute',c)}">MIN ${esc(ev.minute||37)}'</div>`;
    if(ev.side==='home'){
@@ -321,6 +332,12 @@ $('#saveFormat').onclick=()=>{if(!activeDesign||!savedDesigns[activeDesign])retu
 const imgLoad=src=>new Promise(ok=>{if(!src)return ok(null);const i=new Image;i.onload=()=>ok(i);i.onerror=()=>ok(null);i.src=src});
 function drawContain(ctx,img,x,y,size){const r=Math.min(size/img.width,size/img.height),w=img.width*r,h=img.height*r;ctx.drawImage(img,x-w/2,y-h/2,w,h)}
 function drawText(ctx,text,e){ctx.fillStyle=e.color;ctx.font=`${e.weight||700} ${e.size}px "${e.font}"`;ctx.letterSpacing=(e.spacing||0)+'px';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(text,e.x*10.8,e.y*19.2);ctx.letterSpacing='0px'}
+function drawMultilineText(ctx,lines,e){
+ ctx.save();ctx.fillStyle=e.color;ctx.font=`${e.weight||700} ${e.size}px "${e.font}"`;ctx.letterSpacing=(e.spacing||0)+'px';ctx.textAlign='center';ctx.textBaseline='middle';
+ const gap=e.size*1.35,startY=e.y*19.2;
+ lines.forEach((line,index)=>ctx.fillText(line,e.x*10.8,startY+index*gap));
+ ctx.restore()
+}
 function drawTextWithIcon(ctx,text,e,type){
  ctx.save();ctx.fillStyle=e.color;ctx.strokeStyle=e.color;ctx.lineWidth=Math.max(2,e.size*.055);ctx.font=`${e.weight||700} ${e.size}px "${e.font}"`;ctx.letterSpacing=(e.spacing||0)+'px';ctx.textBaseline='middle';
  const icon=e.size*.72,gap=e.size*.3,textWidth=ctx.measureText(text).width,total=icon+gap+textWidth,left=e.x*10.8-total/2,cy=e.y*19.2;
@@ -352,6 +369,10 @@ async function buildStoryImage(event=selectedEvent){
   drawText(x,'VS',cfg.elements.center);
   drawText(x,String(eventScore.home),cfg.elements.homeScore);
   drawText(x,String(eventScore.away),cfg.elements.awayScore);
+  if(f==='final'){
+   const scorerLines=homeScorersForEvent(event).map(goal=>`${goal.minute}’ ${goal.scorer}`);
+   if(scorerLines.length)drawMultilineText(x,scorerLines,cfg.elements.homeScorers)
+  }
   if(f==='goal'){
    drawText(x,`MIN ${ev.minute}'`,cfg.elements.minute);
    if(ev.side==='home'){
