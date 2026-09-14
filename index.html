@@ -24,24 +24,27 @@
     .floating-editor{display:none;position:absolute;z-index:20;width:92%;padding:10px;transform:translate(-50%,0);background:#0d120ff2;color:white;border:1px solid #b9ff42;border-radius:12px;box-shadow:0 12px 35px #000b;text-align:left}.floating-head{display:flex;align-items:center;justify-content:space-between;font-size:10px;font-weight:900;margin-bottom:7px}.floating-head button{border:0;background:#29332c;color:white;border-radius:50%;width:23px;height:23px}.floating-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}.floating-control{display:flex;flex-direction:column;gap:3px}.floating-control label{font-size:8px}.floating-control input,.floating-control select{min-width:0;padding:5px;font-size:9px;height:27px}.floating-check{display:flex;align-items:center;gap:6px;font-size:9px}.floating-check input{width:16px;height:16px}.story-item.editable{cursor:pointer}.story-item.selected{filter:drop-shadow(0 0 5px #b9ff42);outline:1px dashed #74a52f;outline-offset:3px}
     .preset-bar{background:#0c110e;border:1px solid var(--line);border-radius:16px;padding:15px;margin:0 0 18px}.preset-actions{display:grid;grid-template-columns:1fr auto auto;gap:8px;margin-top:9px}.preset-actions button{padding:11px}.preset-chooser{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.preset-choice{background:#0c110e;border:1px solid var(--line);border-radius:12px;padding:10px}.preset-choice label{display:block;margin-bottom:7px}
     @media(max-width:520px){.preset-chooser{grid-template-columns:1fr}.preset-actions{grid-template-columns:1fr 1fr}.preset-actions input{grid-column:1/-1}}
+    .team-manager{display:grid;grid-template-columns:360px 1fr;gap:18px}.team-library{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px}.team-card{background:#0c110e;border:1px solid var(--line);border-radius:16px;padding:14px;text-align:center}.team-card img{width:82px;height:82px;object-fit:contain;display:block;margin:0 auto 10px}.team-card strong{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.team-card-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:12px}.team-card-actions button{padding:8px 5px;border-radius:9px;font-size:10px}.team-select{margin-bottom:10px}.empty-teams{grid-column:1/-1;color:var(--muted);text-align:center;padding:35px 12px;border:1px dashed var(--line);border-radius:16px}@media(max-width:760px){.team-manager{grid-template-columns:1fr}.team-library{grid-template-columns:repeat(2,minmax(0,1fr))}}
     @media(max-width:760px){#designerControls>.section-title,#designerControls>.editor-row,#designerControls>.style-controls,#designerControls>.format-note{display:none}#designerStory{overflow:visible}.floating-editor{display:block;position:fixed;left:12px!important;right:12px;top:auto!important;bottom:calc(12px + env(safe-area-inset-bottom));width:auto;max-height:52dvh;overflow-y:auto;transform:none;z-index:100;border-radius:18px;padding:14px;overscroll-behavior:contain}.floating-head{position:sticky;top:-14px;background:#0d120f;padding:7px 0;z-index:2}.floating-grid{gap:10px}.floating-control input,.floating-control select{height:34px;font-size:12px}.floating-control label,.floating-check{font-size:11px}#designerPreview{padding:12px;position:relative;z-index:2}.designer-grid .phone{max-width:300px}.designer-grid .sub{margin-bottom:10px}}
   </style>
 </head>
 <body>
 <main class="app">
   <header class="top"><div class="brand"><div class="brand-mark">⚡</div><div><h1>Brujas Redes</h1><p>Historias del partido, en segundos</p></div></div><div class="status" id="syncStatus"><i></i>Conectando con la nube…</div></header>
-  <nav class="tabs"><button class="tab active" data-view="setup">Preparar partido</button><button class="tab" data-view="live">Panel en vivo</button><button class="tab" data-view="designer">Editar formatos</button></nav>
+  <nav class="tabs"><button class="tab active" data-view="setup">Preparar partido</button><button class="tab" data-view="live">Panel en vivo</button><button class="tab" data-view="teams">Equipos</button><button class="tab" data-view="designer">Editar formatos</button></nav>
 
   <section id="setup" class="view active">
     <div class="setup-grid">
       <div class="card">
         <h2>Configuración del partido</h2><p class="sub">Cargá los equipos una vez. Después, durante el partido, todo se resuelve con pocos toques.</p>
         <div class="section-title">Equipo local</div>
+        <div class="field team-select"><label>Seleccionar equipo guardado</label><select id="homeTeamSelect"></select></div>
         <div class="form-grid">
           <div class="field"><label>Nombre del equipo</label><input id="homeName" value="Brujas" placeholder="Nombre del local"></div>
           <div class="upload"><img id="homeThumb" alt=""><div><strong>Escudo local</strong><br><label for="homeLogo">Elegir imagen</label><input id="homeLogo" type="file" accept="image/*"></div></div>
         </div>
         <div class="section-title">Equipo visitante</div>
+        <div class="field team-select"><label>Seleccionar equipo guardado</label><select id="awayTeamSelect"></select></div>
         <div class="form-grid">
           <div class="field"><label>Nombre del equipo</label><input id="awayName" placeholder="Nombre del visitante"></div>
           <div class="upload"><img id="awayThumb" alt=""><div><strong>Escudo visitante</strong><br><label for="awayLogo">Elegir imagen</label><input id="awayLogo" type="file" accept="image/*"></div></div>
@@ -60,6 +63,22 @@
         <div class="field"><label>Diseño para todas las historias</label><select id="presetChooser"></select></div>
       </div>
       <aside class="card preview-shell"><h2>Vista previa</h2><p class="sub">Así se verá la historia de inicio.</p><div class="phone"><div id="setupStory" class="story"></div></div></aside>
+    </div>
+  </section>
+
+  <section id="teams" class="view">
+    <div class="team-manager">
+      <div class="card">
+        <h2 id="teamFormTitle">Agregar equipo</h2><p class="sub">Guardá el nombre y el escudo una sola vez.</p>
+        <div class="field"><label>Nombre del equipo</label><input id="teamName" placeholder="Ej: Hammers"></div>
+        <div class="upload" style="margin-top:12px"><img id="teamThumb" alt=""><div><strong>Escudo</strong><br><label for="teamLogo">Elegir imagen</label><input id="teamLogo" type="file" accept="image/*"></div></div>
+        <button id="saveTeam" class="primary wide">Guardar equipo</button>
+        <button id="cancelTeamEdit" class="secondary wide hidden">Cancelar edición</button>
+      </div>
+      <div class="card">
+        <h2>Equipos guardados</h2><p class="sub">Podés usarlos directamente como local o visitante.</p>
+        <div id="teamLibrary" class="team-library"></div>
+      </div>
     </div>
   </section>
 
@@ -159,7 +178,17 @@
     save();
   }
   function svgPlaceholder(){return 'data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><rect width="80" height="80" rx="15" fill="#202a23"/><path d="M40 18l18 8v13c0 12-8 20-18 24-10-4-18-12-18-24V26z" fill="none" stroke="#718078" stroke-width="3"/></svg>')}
-  function switchView(id){$$('.tab').forEach(x=>x.classList.toggle('active',x.dataset.view===id));$$('.view').forEach(x=>x.classList.toggle('active',x.id===id));scrollTo({top:0,behavior:'smooth'})}
+  function teamOptions(selected=''){return '<option value="">Carga manual / sin seleccionar</option>'+teams.map(t=>`<option value="${t.id}" ${t.id===selected?'selected':''}>${esc(t.name)}</option>`).join('')}
+function selectedTeamId(side){const found=teams.find(t=>t.name===state[side+'Name']&&t.logo===state[side+'Logo']);return found?.id||''}
+function renderTeams(){
+ const home=$('#homeTeamSelect'),away=$('#awayTeamSelect');
+ if(home){home.innerHTML=teamOptions(selectedTeamId('home'));away.innerHTML=teamOptions(selectedTeamId('away'))}
+ const lib=$('#teamLibrary');if(!lib)return;
+ lib.innerHTML=teams.length?teams.map(t=>`<article class="team-card"><img src="${t.logo||placeholder()}" alt=""><strong>${esc(t.name)}</strong><div class="team-card-actions"><button class="secondary" data-team-action="home" data-id="${t.id}">Usar local</button><button class="secondary" data-team-action="away" data-id="${t.id}">Usar visita</button><button class="secondary" data-team-action="edit" data-id="${t.id}">Editar</button><button class="danger" data-team-action="delete" data-id="${t.id}">Eliminar</button></div></article>`).join(''):'<div class="empty-teams">Todavía no guardaste equipos.</div>'
+}
+function useTeam(id,side){const t=teams.find(x=>x.id===id);if(!t)return;state[side+'Name']=t.name;state[side+'Logo']=t.logo;render();toast('Equipo cargado como '+(side==='home'?'local':'visitante'))}
+function resetTeamForm(){editingTeamId=null;teamLogoData='';$('#teamName').value='';$('#teamLogo').value='';$('#teamThumb').src=placeholder();$('#teamFormTitle').textContent='Agregar equipo';$('#saveTeam').textContent='Guardar equipo';$('#cancelTeamEdit').classList.add('hidden')}
+function switchView(id){$$('.tab').forEach(x=>x.classList.toggle('active',x.dataset.view===id));$$('.view').forEach(x=>x.classList.toggle('active',x.id===id));scrollTo({top:0,behavior:'smooth'})}
   $$('.tab').forEach(b=>b.onclick=()=>switchView(b.dataset.view));
   ['homeName','awayName'].forEach(id=>$('#'+id).oninput=e=>{state[id]=e.target.value;render()});
   function loadImage(input,key,thumb){const f=input.files[0];if(!f)return;const r=new FileReader;r.onload=()=>{state[key]=r.result;$(thumb).src=r.result;render()};r.readAsDataURL(f)}
@@ -226,13 +255,14 @@ const fonts=['Arial','Anton','Bebas Neue','Oswald','Barlow Condensed','Montserra
 let palette=JSON.parse(localStorage.getItem('brujasPalette')||'["#ff5a00","#090909","#ffffff","#1b5e20","#1565c0","#fbc02d"]');
 const oldPresets=JSON.parse(localStorage.getItem('brujasSavedPresets')||'{}'),oldActive=JSON.parse(localStorage.getItem('brujasActivePresets')||'{}');
 let savedDesigns=JSON.parse(localStorage.getItem('brujasDesigns')||'{}'),activeDesign=localStorage.getItem('brujasActiveDesign')||'';
+let teams=JSON.parse(localStorage.getItem('brujasTeams')||'[]'),editingTeamId=null,teamLogoData='';
 if(!Object.keys(savedDesigns).length){const names=new Set;Object.values(oldPresets).forEach(group=>Object.keys(group||{}).forEach(n=>names.add(n)));names.forEach(name=>{savedDesigns[name]={formats:{},syncGeometry:{}};Object.keys(formatNames).forEach(f=>savedDesigns[name].formats[f]=JSON.parse(JSON.stringify(oldPresets[f]?.[name]||makeDefaults()[f]))) });activeDesign=Object.values(oldActive).find(n=>savedDesigns[n])||''}
 Object.values(savedDesigns).forEach(d=>d.syncGeometry=d.syncGeometry||{});
 let editFormat='upcoming',editElement='title',floatingOpen=false;
 const applicable={upcoming:['title','line','homeLogo','center','awayLogo','homeName','awayName','day','time','place'],start:['title','line','homeLogo','center','awayLogo','homeName','awayName'],goal:['title','line','homeLogo','center','awayLogo','homeName','awayName','detail'],halftime:['title','line','homeLogo','center','awayLogo','homeName','awayName'],secondhalf:['title','line','homeLogo','center','awayLogo','homeName','awayName'],final:['title','line','homeLogo','center','awayLogo','homeName','awayName']};
 const elementNames={title:'Título',line:'Línea naranja',homeLogo:'Escudo local',center:'VS / marcador',awayLogo:'Escudo visitante',homeName:'Nombre local',awayName:'Nombre visitante',detail:'Goleador y minuto',day:'Día',time:'Hora',place:'Lugar'};
 const applicableFor=f=>[...applicable[f],...Object.keys(formats[f].elements).filter(k=>k.startsWith('custom'))];
-const save=()=>{localStorage.setItem('brujasMatch',JSON.stringify(state));localStorage.setItem('brujasFormats',JSON.stringify(formats));localStorage.setItem('brujasPalette',JSON.stringify(palette));localStorage.setItem('brujasDesigns',JSON.stringify(savedDesigns));localStorage.setItem('brujasActiveDesign',activeDesign);window.queueBrujasCloudSave?.()};
+const save=()=>{localStorage.setItem('brujasMatch',JSON.stringify(state));localStorage.setItem('brujasFormats',JSON.stringify(formats));localStorage.setItem('brujasPalette',JSON.stringify(palette));localStorage.setItem('brujasDesigns',JSON.stringify(savedDesigns));localStorage.setItem('brujasActiveDesign',activeDesign);localStorage.setItem('brujasTeams',JSON.stringify(teams));window.queueBrujasCloudSave?.()};
 const esc=s=>String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const sampleEvent=f=>({type:f,title:titleDefaults[f],homeScore:f==='start'||f==='upcoming'?0:2,awayScore:f==='start'||f==='upcoming'?0:1,scorer:f==='goal'?'JUGADOR BRUJAS':'',minute:f==='goal'?'37':'',icon:'●'});
 function itemStyle(k,c){const e=c.elements[k];return `left:${e.x}%;top:${e.y}%;font-size:${e.size/10.8}cqw;color:${e.color};font-family:'${e.font}',sans-serif;font-weight:${e.weight};letter-spacing:${e.spacing/10.8}cqw`}
@@ -260,7 +290,7 @@ function render(){
  $('#liveHomeLogo').innerHTML=state.homeLogo?`<img class="crest" src="${state.homeLogo}">`:'<div class="crest-fallback">LOCAL</div>';$('#liveAwayLogo').innerHTML=state.awayLogo?`<img class="crest" src="${state.awayLogo}">`:'<div class="crest-fallback">VISITA</div>';
  $('#homeScore').textContent=state.homeScore;$('#awayScore').textContent=state.awayScore;$('#phase').textContent=state.phase;
  $('#timeline').innerHTML=state.events.length?state.events.slice().reverse().map((e,ri)=>`<div class="log"><div class="log-icon">${e.icon}</div><div class="log-info"><strong>${esc(e.title)}</strong><span>${esc(e.subtitle||'Historia generada')}</span></div><button data-story="${state.events.length-1-ri}">Ver</button></div>`).join(''):'<div class="timeline-empty">Acá aparecerán las historias generadas durante el partido.</div>';
- renderPresetChooser();renderDesigner();save()
+ renderPresetChooser();renderDesigner();renderTeams();save()
 }
 function presetOptions(){const names=Object.keys(savedDesigns);return '<option value="">Seleccioná un diseño</option>'+names.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('')}
 function activateDesign(name){if(name&&savedDesigns[name]){formats=JSON.parse(JSON.stringify(savedDesigns[name].formats));Object.keys(formatNames).forEach(f=>hydrateFormat(f))}activeDesign=name;save();render()}
@@ -270,13 +300,17 @@ function renderPresetChooser(){
 function switchView(id){$$('.tab').forEach(x=>x.classList.toggle('active',x.dataset.view===id));$$('.view').forEach(x=>x.classList.toggle('active',x.id===id));scrollTo({top:0,behavior:'smooth'})}
 $$('.tab').forEach(b=>b.onclick=()=>switchView(b.dataset.view));
 ['homeName','awayName','matchDay','matchTime','matchPlace'].forEach(id=>$('#'+id).oninput=e=>{state[id]=e.target.value;render()});
-function loadImage(input,key){
- const f=input.files[0];if(!f)return;
- const reader=new FileReader;
- reader.onload=()=>{const img=new Image;img.onload=()=>{const max=420,scale=Math.min(1,max/Math.max(img.width,img.height)),canvas=document.createElement('canvas');canvas.width=Math.round(img.width*scale);canvas.height=Math.round(img.height*scale);const ctx=canvas.getContext('2d');ctx.drawImage(img,0,0,canvas.width,canvas.height);state[key]=canvas.toDataURL('image/webp',.82);render()};img.onerror=()=>{state[key]=reader.result;render()};img.src=reader.result};
- reader.readAsDataURL(f)
-}
+$('#homeTeamSelect').onchange=e=>{if(e.target.value)useTeam(e.target.value,'home')};
+$('#awayTeamSelect').onchange=e=>{if(e.target.value)useTeam(e.target.value,'away')};
+function compressImage(file,done){const reader=new FileReader;reader.onload=()=>{const img=new Image;img.onload=()=>{const max=420,scale=Math.min(1,max/Math.max(img.width,img.height)),canvas=document.createElement('canvas');canvas.width=Math.round(img.width*scale);canvas.height=Math.round(img.height*scale);canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);done(canvas.toDataURL('image/webp',.82))};img.onerror=()=>done(reader.result);img.src=reader.result};reader.readAsDataURL(file)}
+function loadImage(input,key){const f=input.files[0];if(!f)return;compressImage(f,data=>{state[key]=data;render()})}
 $('#homeLogo').onchange=e=>loadImage(e.target,'homeLogo');$('#awayLogo').onchange=e=>loadImage(e.target,'awayLogo');
+$('#teamThumb').src=placeholder();
+$('#teamLogo').onchange=e=>{const f=e.target.files[0];if(f)compressImage(f,data=>{teamLogoData=data;$('#teamThumb').src=data})};
+$('#saveTeam').onclick=()=>{const name=$('#teamName').value.trim();if(!name)return toast('Escribí el nombre del equipo');if(!teamLogoData)return toast('Elegí un escudo');const wasEditing=!!editingTeamId;if(editingTeamId){const t=teams.find(x=>x.id===editingTeamId);if(t){t.name=name;t.logo=teamLogoData}}else teams.push({id:String(Date.now()),name,logo:teamLogoData});resetTeamForm();save();render();toast(wasEditing?'Equipo actualizado':'Equipo guardado')};
+$('#cancelTeamEdit').onclick=resetTeamForm;
+$('#teamLibrary').onclick=e=>{const b=e.target.closest('[data-team-action]');if(!b)return;const t=teams.find(x=>x.id===b.dataset.id);if(!t)return;if(b.dataset.teamAction==='home'||b.dataset.teamAction==='away'){useTeam(t.id,b.dataset.teamAction);switchView('setup')}else if(b.dataset.teamAction==='edit'){editingTeamId=t.id;teamLogoData=t.logo;$('#teamName').value=t.name;$('#teamThumb').src=t.logo;$('#teamFormTitle').textContent='Editar equipo';$('#saveTeam').textContent='Guardar cambios';$('#cancelTeamEdit').classList.remove('hidden');scrollTo({top:0,behavior:'smooth'})}else if(b.dataset.teamAction==='delete'){if(!confirm('¿Eliminar '+t.name+'?'))return;teams=teams.filter(x=>x.id!==t.id);save();render();toast('Equipo eliminado')}};
+
 function addPlayer(){const p=$('#playerInput').value.trim();if(!p)return;state.players.push(p);$('#playerInput').value='';render()}
 $('#addPlayer').onclick=addPlayer;$('#playerInput').onkeydown=e=>{if(e.key==='Enter')addPlayer()};$('#playerList').onclick=e=>{if(e.target.dataset.remove!==undefined){state.players.splice(+e.target.dataset.remove,1);render()}};
 $('#upcomingStory').onclick=()=>{if(!state.awayName.trim()||!state.matchDay.trim()||!state.matchTime.trim()||!state.matchPlace.trim())return toast('Completá rival, día, hora y lugar');openStory(sampleEvent('upcoming'))};
@@ -340,7 +374,7 @@ $('#downloadStory').onclick=async()=>{if(!selectedEvent)return;const ev=selected
  if(f==='upcoming'){drawText(x,'▣  '+(state.matchDay||'DÍA').toUpperCase(),cfg.elements.day);drawText(x,'◷  '+(state.matchTime||'HORA').toUpperCase(),cfg.elements.time);drawText(x,(state.matchPlace||'LUGAR').toUpperCase(),cfg.elements.place)}
  Object.keys(cfg.elements).filter(k=>k.startsWith('custom')).forEach(k=>{const e=cfg.elements[k];if(e.type==='line'){x.fillStyle=e.color;x.fillRect(e.x*10.8-e.size/2,e.y*19.2-e.height/2,e.size,e.height)}else drawText(x,(e.content||'TEXTO').toUpperCase(),e)});
  const a=document.createElement('a');a.download=`historia-${f}-${Date.now()}.png`;a.href=c.toDataURL('image/png');a.click();toast('Historia descargada')};
-window.getBrujasCloudData=()=>({state,formats,palette,savedDesigns,activeDesign});
+window.getBrujasCloudData=()=>({state,formats,palette,savedDesigns,activeDesign,teams});
 window.applyBrujasCloudData=data=>{
  state={...fresh,...(data.state||{})};
  formats=data.formats||makeDefaults();
@@ -348,6 +382,7 @@ window.applyBrujasCloudData=data=>{
  palette=Array.isArray(data.palette)?data.palette:palette;
  savedDesigns=data.savedDesigns||{};
  activeDesign=data.activeDesign||'';
+ teams=Array.isArray(data.teams)?data.teams:teams;
  render()
 };
 render();
@@ -384,7 +419,7 @@ window.queueBrujasCloudSave=()=>{
 onSnapshot(sharedRef,snapshot=>{
  if(snapshot.exists()){
   const raw=snapshot.data();
-  const data={state:raw.state,formats:raw.formats,palette:raw.palette,savedDesigns:raw.savedDesigns,activeDesign:raw.activeDesign};
+  const data={state:raw.state,formats:raw.formats,palette:raw.palette,savedDesigns:raw.savedDesigns,activeDesign:raw.activeDesign,teams:raw.teams};
   const json=JSON.stringify(data);
   if(json!==lastCloudJson){lastCloudJson=json;applyingCloud=true;window.applyBrujasCloudData(data);applyingCloud=false}
   setStatus("Sincronizado")
