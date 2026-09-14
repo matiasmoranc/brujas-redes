@@ -84,8 +84,7 @@
         <div class="editor-row"><label id="sizeLabel">Tamaño</label><input id="elementSize" type="range" min="8" max="400"><output id="sizeOut"></output></div>
         <div class="style-controls">
           <div class="form-grid">
-            <div class="field"><label>Fuente</label><select id="fontSelect"></select></div>
-            <div class="field"><label>Aplicar fuente a</label><select id="fontScope"><option value="element">Este elemento</option><option value="format">Todo este formato</option><option value="all">Todos los formatos</option></select></div>
+            <div class="field full"><label>Fuente del elemento seleccionado</label><select id="fontSelect"></select></div>
           </div>
           <div class="editor-row"><label>Negrita</label><input id="boldToggle" type="checkbox" style="width:24px;height:24px;accent-color:var(--green)"><output id="boldOut"></output></div>
           <div class="editor-row"><label>Separar letras</label><input id="letterSpacing" type="range" min="-2" max="30" step="1"><output id="spacingOut"></output></div>
@@ -286,7 +285,7 @@ function renderDesigner(){
  $('#customTitle').value=formats[editFormat].title;const e=formats[editFormat].elements[editElement];
  if(!$('#fontSelect').options.length)$('#fontSelect').innerHTML=fonts.map(f=>`<option value="${f}" style="font-family:'${f}'">${f}</option>`).join('');
  const isCustom=editElement.startsWith('custom'),isLine=editElement==='line'||e.type==='line';$('#customContentField').classList.toggle('hidden',!isCustom||isLine);$('#customContent').value=e.content||'';$('#deleteElement').disabled=!isCustom;
- $('#posX').value=e.x;$('#posY').value=e.y;$('#elementSize').value=e.size;$('#posXOut').value=e.x+'%';$('#posYOut').value=e.y+'%';$('#sizeOut').value=e.size+'px';$('#sizeLabel').textContent=isLine?'Ancho de línea':(editElement.includes('Logo')?'Tamaño del escudo':'Tamaño');$('#fontSelect').value=e.font;$('#fontSelect').disabled=isLine||editElement.includes('Logo');$('#boldToggle').checked=e.weight>=700;$('#boldToggle').disabled=isLine||editElement.includes('Logo');$('#boldOut').value=e.weight>=700?'Sí':'No';$('#letterSpacing').value=e.spacing||0;$('#letterSpacing').disabled=isLine||editElement.includes('Logo');$('#spacingOut').value=(e.spacing||0)+'px';$('#colorPicker').value=e.color;renderPalette();
+ $('#posX').value=e.x;$('#posY').value=e.y;$('#elementSize').value=e.size;$('#posXOut').value=e.x+'%';$('#posYOut').value=e.y+'%';$('#sizeOut').value=e.size+'px';$('#sizeLabel').textContent=isLine?'Ancho de línea':(editElement.includes('Logo')?'Tamaño del escudo':'Tamaño del texto');$('#fontSelect').value=e.font;$('#fontSelect').disabled=isLine||editElement.includes('Logo');$('#boldToggle').checked=e.weight>=700;$('#boldToggle').disabled=isLine||editElement.includes('Logo');$('#boldOut').value=e.weight>=700?'Sí':'No';$('#letterSpacing').value=e.spacing||0;$('#letterSpacing').disabled=isLine||editElement.includes('Logo');$('#spacingOut').value=(e.spacing||0)+'px';$('#colorPicker').value=e.color;renderPalette();
  $('#designerStory').innerHTML=storyHTML(sampleEvent(editFormat))
 }
 $('#formatSelect').onchange=e=>{editFormat=e.target.value;editElement=applicableFor(editFormat)[0];renderDesigner()};$('#elementSelect').onchange=e=>{editElement=e.target.value;renderDesigner()};
@@ -301,7 +300,7 @@ function addCustom(type){const key='custom'+Date.now();formats[editFormat].eleme
 $('#addTextElement').onclick=()=>addCustom('text');$('#addLineElement').onclick=()=>addCustom('line');$('#deleteElement').onclick=()=>{if(!editElement.startsWith('custom'))return;if(!confirm('¿Eliminar este elemento?'))return;delete formats[editFormat].elements[editElement];editElement='title';save();renderDesigner();toast('Elemento eliminado')};
 ['posX','posY','elementSize'].forEach(id=>$('#'+id).oninput=e=>{const key=id==='posX'?'x':id==='posY'?'y':'size';formats[editFormat].elements[editElement][key]=+e.target.value;renderDesigner()});
 function targets(scope,includeLine=false){let out=[];const fs=scope==='all'?Object.keys(formats):[editFormat];fs.forEach(f=>applicableFor(f).forEach(k=>{const e=formats[f].elements[k];if((includeLine||(k!=='line'&&e.type!=='line'))&&!k.includes('Logo'))out.push(e)}));return scope==='element'?[formats[editFormat].elements[editElement]]:out}
-$('#fontSelect').onchange=e=>{targets($('#fontScope').value).forEach(x=>x.font=e.target.value);renderDesigner()};
+$('#fontSelect').onchange=e=>{formats[editFormat].elements[editElement].font=e.target.value;renderDesigner()};
 $('#boldToggle').onchange=e=>{formats[editFormat].elements[editElement].weight=e.target.checked?900:400;renderDesigner()};
 $('#letterSpacing').oninput=e=>{formats[editFormat].elements[editElement].spacing=+e.target.value;renderDesigner()};
 function renderPalette(){$('#palette').innerHTML=palette.map(c=>`<button class="swatch ${c.toLowerCase()===$('#colorPicker').value.toLowerCase()?'active':''}" data-color="${c}" style="background:${c}" title="${c}"></button>`).join('')}
