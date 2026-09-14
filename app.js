@@ -334,18 +334,21 @@ function drawTextWithIcon(ctx,text,e,type){
 }
 async function buildStoryImage(event=selectedEvent){
  if(!event)return null;
- const ev=event,f=ev.type,cfg=formats[f],c=$('#canvas'),x=c.getContext('2d');
- const [base,hi,ai]=await Promise.all([imgLoad('assets/story-base.jpg'),imgLoad(state.homeLogo),imgLoad(state.awayLogo)]);
+ const ev={...event},f=ev.type,cfg=JSON.parse(JSON.stringify(formats[f]));
+ const storyState={homeName:storyState.homeName,awayName:storyState.awayName,homeLogo:state.homeLogo,awayLogo:state.awayLogo,matchDay:storyState.matchDay,matchTime:storyState.matchTime,matchPlace:storyState.matchPlace};
+ const eventScore=scoreForEvent(event),periodTitle=goalPeriod(event);
+ const c=document.createElement('canvas');c.width=1080;c.height=1920;
+ const x=c.getContext('2d');
+ const [base,hi,ai]=await Promise.all([imgLoad('assets/story-base.jpg'),imgLoad(storyState.homeLogo),imgLoad(storyState.awayLogo)]);
  x.clearRect(0,0,c.width,c.height);
  if(base)x.drawImage(base,0,0,1080,1920);else{x.fillStyle='#fff';x.fillRect(0,0,1080,1920)}
  await Promise.all(Object.values(cfg.elements).filter(e=>e.font).map(e=>document.fonts.load(`${e.weight||700} ${e.size}px "${e.font}"`).catch(()=>null)));
- drawText(x,(f==='goal'?goalPeriod(ev):cfg.title).toUpperCase(),cfg.elements.title);
+ drawText(x,(f==='goal'?periodTitle:cfg.title).toUpperCase(),cfg.elements.title);
  const ln=cfg.elements.line;x.fillStyle=ln.color;x.fillRect(ln.x*10.8-ln.size/2,ln.y*19.2-ln.height/2,ln.size,ln.height);
  if(hi)drawContain(x,hi,cfg.elements.homeLogo.x*10.8,cfg.elements.homeLogo.y*19.2,cfg.elements.homeLogo.size);
  if(ai)drawContain(x,ai,cfg.elements.awayLogo.x*10.8,cfg.elements.awayLogo.y*19.2,cfg.elements.awayLogo.size);
  const isScoreboard=f==='goal'||resultFormats.includes(f);
  if(isScoreboard){
-  const eventScore=scoreForEvent(ev);
   drawText(x,'VS',cfg.elements.center);
   drawText(x,String(eventScore.home),cfg.elements.homeScore);
   drawText(x,String(eventScore.away),cfg.elements.awayScore);
@@ -358,12 +361,12 @@ async function buildStoryImage(event=selectedEvent){
   }
  }else{
   drawText(x,(f==='start'||f==='upcoming')?'VS':`${ev.homeScore}–${ev.awayScore}`,cfg.elements.center);
-  drawText(x,(state.homeName||'LOCAL').toUpperCase(),cfg.elements.homeName);
-  drawText(x,(state.awayName||'VISITANTE').toUpperCase(),cfg.elements.awayName);
+  drawText(x,(storyState.homeName||'LOCAL').toUpperCase(),cfg.elements.homeName);
+  drawText(x,(storyState.awayName||'VISITANTE').toUpperCase(),cfg.elements.awayName);
   if(f==='upcoming'){
-   drawTextWithIcon(x,(state.matchDay||'DÍA').toUpperCase(),cfg.elements.day,'calendar');
-   drawTextWithIcon(x,(state.matchTime||'HORA').toUpperCase(),cfg.elements.time,'clock');
-   drawText(x,(state.matchPlace||'LUGAR').toUpperCase(),cfg.elements.place)
+   drawTextWithIcon(x,(storyState.matchDay||'DÍA').toUpperCase(),cfg.elements.day,'calendar');
+   drawTextWithIcon(x,(storyState.matchTime||'HORA').toUpperCase(),cfg.elements.time,'clock');
+   drawText(x,(storyState.matchPlace||'LUGAR').toUpperCase(),cfg.elements.place)
   }
  }
  Object.keys(cfg.elements).filter(k=>k.startsWith('custom')).forEach(k=>{
