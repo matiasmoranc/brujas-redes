@@ -292,6 +292,7 @@ function resetRole(){
   $('#adminPasswordError').textContent='';
   window.scrollTo(0,0)
 }
+queueMicrotask(()=>{
 $('#chooseOperator').onclick=()=>enterRole('operator');
 $('#chooseAdmin').onclick=()=>{
   $('#adminPasswordBox').classList.remove('hidden');
@@ -309,6 +310,7 @@ function confirmAdminRole(){
 $('#confirmAdmin').onclick=confirmAdminRole;
 $('#adminPassword').onkeydown=e=>{if(e.key==='Enter')confirmAdminRole()};
 $('#changeRole').onclick=resetRole;
+});
 
 let lastTouchEnd=0;
 document.addEventListener('touchend',event=>{const now=Date.now();if(now-lastTouchEnd<320)event.preventDefault();lastTouchEnd=now},{passive:false});
