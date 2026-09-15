@@ -451,7 +451,35 @@ $('#confirmPublish').onclick=async()=>{
   toast(error.message||'No se pudo publicar en Instagram')
  }finally{publishingStory=false;button.disabled=false;button.textContent=original}
 };
+const configStateKeys=['homeName','awayName','homeLogo','awayLogo','players','matchDay','matchTime','matchPlace'];
+const liveStateKeys=['homeScore','awayScore','phase','events','timerSeconds','timerRunning','timerStartedAt'];
+const pickState=keys=>Object.fromEntries(keys.map(key=>[key,state[key]]));
+window.getBrujasCloudSections=()=>({
+ config:pickState(configStateKeys),
+ live:pickState(liveStateKeys),
+ designs:{formats,palette,savedDesigns,activeDesign},
+ teams:{teams}
+});
 window.getBrujasCloudData=()=>({state,formats,palette,savedDesigns,activeDesign,teams});
+window.applyBrujasCloudSection=(section,data={})=>{
+ if(section==='config')configStateKeys.forEach(key=>{if(data[key]!==undefined)state[key]=data[key]});
+ if(section==='live')liveStateKeys.forEach(key=>{if(data[key]!==undefined)state[key]=data[key]});
+ if(section==='designs'){
+  formats=data.formats||formats||makeDefaults();
+  Object.keys(formatNames).forEach(f=>hydrateFormat(f));
+  palette=Array.isArray(data.palette)?data.palette:palette;
+  savedDesigns=data.savedDesigns||{};
+  activeDesign=data.activeDesign||''
+ }
+ if(section==='teams')teams=Array.isArray(data.teams)?data.teams:teams;
+ localStorage.setItem('brujasMatch',JSON.stringify(state));
+ localStorage.setItem('brujasFormats',JSON.stringify(formats));
+ localStorage.setItem('brujasPalette',JSON.stringify(palette));
+ localStorage.setItem('brujasDesigns',JSON.stringify(savedDesigns));
+ localStorage.setItem('brujasActiveDesign',activeDesign);
+ localStorage.setItem('brujasTeams',JSON.stringify(teams));
+ render()
+};
 window.applyBrujasCloudData=data=>{
  state={...fresh,...(data.state||{})};
  formats=data.formats||makeDefaults();
@@ -461,5 +489,30 @@ window.applyBrujasCloudData=data=>{
  activeDesign=data.activeDesign||'';
  teams=Array.isArray(data.teams)?data.teams:teams;
  render()
+};
+$('#exportBackup').onclick=async()=>{
+ const backup={app:'brujas-redes',version:1,exportedAt:new Date().toISOString(),sections:window.getBrujasCloudSections()};
+ const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});
+ const filename=`brujas-redes-copia-${new Date().toISOString().slice(0,10)}.json`;
+ const file=new File([blob],filename,{type:'application/json'});
+ try{
+  if(navigator.share&&navigator.canShare?.({files:[file]}))await navigator.share({files:[file],title:'Copia de seguridad Brujas Redes'});
+  else{const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000)}
+  toast('Copia exportada correctamente')
+ }catch(error){if(error.name!=='AbortError'){console.error('No se pudo exportar la copia',error);toast('No se pudo exportar la copia')}}
+};
+$('#chooseBackup').onclick=()=>$('#restoreBackupFile').click();
+$('#restoreBackupFile').onchange=async event=>{
+ const input=event.target,file=input.files?.[0];if(!file)return;
+ try{
+  const backup=JSON.parse(await file.text());
+  const required=['config','live','designs','teams'];
+  if(backup.app!=='brujas-redes'||!backup.sections||!required.every(section=>backup.sections[section]&&typeof backup.sections[section]==='object'))throw new Error('Archivo incompatible');
+  appConfirm('¿Restaurar esta copia? Se reemplazarán los datos actuales.',()=>{
+   required.forEach(section=>window.applyBrujasCloudSection(section,backup.sections[section]));
+   save();toast('Copia restaurada correctamente')
+  })
+ }catch(error){console.error('No se pudo restaurar la copia',error);toast('El archivo no es una copia válida')}
+ finally{input.value=''}
 };
 render();
