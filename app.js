@@ -233,6 +233,21 @@ function updateTimerDisplay(){
  if(total>=7200&&state.timerRunning){state.timerSeconds=7200;state.timerRunning=false;state.timerStartedAt=null;save();toast('El cronómetro llegó a 120 minutos')}
 }
 function closeTimerEditor(){$('#timerEditor').classList.add('hidden')}
+let timerUnlocked=false,timerLockTimeout=null;
+function setTimerUnlocked(unlocked){
+ timerUnlocked=unlocked;
+ const panel=$('#timerPanel'),body=panel?.querySelector('.timer-body'),button=$('#timerLock'),icon=$('#timerLockIcon');
+ panel?.classList.toggle('timer-unlocked',unlocked);
+ panel?.classList.toggle('timer-locked',!unlocked);
+ if(body)body.inert=!unlocked;
+ if(button){button.setAttribute('aria-pressed',String(unlocked));button.setAttribute('aria-label',unlocked?'Bloquear cronómetro':'Desbloquear cronómetro')}
+ if(icon)icon.textContent=unlocked?'🔓':'🔒';
+ clearTimeout(timerLockTimeout);
+ if(unlocked)timerLockTimeout=setTimeout(()=>setTimerUnlocked(false),20000);
+ else closeTimerEditor()
+}
+$('#timerLock').onclick=()=>setTimerUnlocked(!timerUnlocked);
+setTimerUnlocked(false);
 $('#timerDisplay').onclick=()=>{$('#timerEdit').value=timerMinuteValue();$('#timerEditor').classList.remove('hidden');setTimeout(()=>{$('#timerEdit').focus();$('#timerEdit').select()},30)};
 $('#timerStart').onclick=()=>{if(state.timerRunning)return;state.timerSeconds=timerValue();if(state.timerSeconds>=7200)return toast('El máximo es 120 minutos');state.timerStartedAt=Date.now();state.timerRunning=true;save();updateTimerDisplay()};
 $('#timerPause').onclick=()=>{state.timerSeconds=timerValue();state.timerRunning=false;state.timerStartedAt=null;save();updateTimerDisplay()};
