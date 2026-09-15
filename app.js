@@ -494,12 +494,26 @@ $('#exportBackup').onclick=async()=>{
  const backup={app:'brujas-redes',version:1,exportedAt:new Date().toISOString(),sections:window.getBrujasCloudSections()};
  const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});
  const filename=`brujas-redes-copia-${new Date().toISOString().slice(0,10)}.json`;
- const file=new File([blob],filename,{type:'application/json'});
+ const download=()=>{
+  const url=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=url;a.download=filename;a.style.display='none';document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),30000)
+ };
  try{
-  if(navigator.share&&navigator.canShare?.({files:[file]}))await navigator.share({files:[file],title:'Copia de seguridad Brujas Redes'});
-  else{const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000)}
+  const mobile=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)||(navigator.maxTouchPoints>1&&innerWidth<900);
+  if(mobile&&navigator.share){
+   const file=new File([blob],filename,{type:'application/json'});
+   if(!navigator.canShare||navigator.canShare({files:[file]})){
+    try{await navigator.share({files:[file],title:'Copia de seguridad Brujas Redes'})}
+    catch(error){if(error.name==='AbortError')return;download()}
+   }else download()
+  }else download();
   toast('Copia exportada correctamente')
- }catch(error){if(error.name!=='AbortError'){console.error('No se pudo exportar la copia',error);toast('No se pudo exportar la copia')}}
+ }catch(error){
+  console.error('No se pudo exportar la copia',error);
+  try{download();toast('Copia exportada correctamente')}
+  catch(downloadError){console.error('No se pudo descargar la copia',downloadError);toast('No se pudo exportar la copia')}
+ }
 };
 $('#chooseBackup').onclick=()=>$('#restoreBackupFile').click();
 $('#restoreBackupFile').onchange=async event=>{
