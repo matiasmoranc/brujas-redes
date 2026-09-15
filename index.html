@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow+Condensed:wght@400;700;900&family=Bebas+Neue&family=Montserrat:wght@400;700;900&family=Oswald:wght@400;700&family=Playfair+Display:wght@400;700;900&family=Poppins:wght@400;700;900&family=Roboto+Condensed:wght@400;700;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20260916-8">
+  <link rel="stylesheet" href="styles.css?v=20260916-9">
 </head>
 <body>
 <section id="roleGate" class="role-gate">
@@ -161,7 +161,7 @@
           <button class="event" data-event="final"><span class="ui-icon" data-ui-icon="flag" aria-hidden="true"></span><span class="event-label">Final</span></button>
         </div>
       </div>
-      <aside class="card events-card"><h2>Historial del partido</h2><p class="sub">Eventos e historias generadas durante el partido.</p><div id="timeline" class="timeline"></div></aside>
+      <aside class="card events-card"><h2>Historial del partido</h2><div id="timeline" class="timeline"></div></aside>
     </div>
   </section>
 </main>
@@ -171,7 +171,7 @@
 <div id="publishModal" class="modal"><div class="sheet"><div class="sheet-head"><h3>Confirmar publicación</h3><button class="close" data-close>×</button></div><div class="field" style="margin-top:18px"><label>Contraseña de publicación</label><input id="publishPassword" type="password" autocomplete="current-password" placeholder="Ingresá la contraseña"></div><div class="notice">Esta acción publicará ahora la historia en @brujasfpcoficial.</div><div class="sheet-actions"><button class="secondary" data-close>Cancelar</button><button id="confirmPublish" class="primary">Confirmar y publicar</button></div></div></div>
 <div id="confirmModal" class="modal"><div class="sheet"><div class="sheet-head"><h3>Confirmar acción</h3><button id="confirmClose" class="close" type="button">×</button></div><p id="confirmMessage" class="notice" style="margin-top:18px"></p><div class="sheet-actions"><button id="confirmCancel" class="secondary" type="button">Cancelar</button><button id="confirmAccept" class="danger" type="button">Confirmar</button></div></div></div>
 <div id="toast" class="toast"></div>
-<script src="app.js?v=20260916-7"></script>
+<script src="app.js?v=20260916-8"></script>
 <script type="module" src="firebase.js?v=20260915-2"></script>
 </body>
 </html>
