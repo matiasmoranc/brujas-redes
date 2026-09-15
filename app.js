@@ -234,20 +234,23 @@ function updateTimerDisplay(){
 }
 function closeTimerEditor(){$('#timerEditor').classList.add('hidden')}
 let timerUnlocked=false,timerLockTimeout=null;
+const timerMobileQuery=window.matchMedia('(max-width:760px)');
 function setTimerUnlocked(unlocked){
- timerUnlocked=unlocked;
+ const isMobile=timerMobileQuery.matches;
+ timerUnlocked=isMobile?unlocked:true;
  const panel=$('#timerPanel'),body=panel?.querySelector('.timer-body'),button=$('#timerLock'),icon=$('#timerLockIcon');
- panel?.classList.toggle('timer-unlocked',unlocked);
- panel?.classList.toggle('timer-locked',!unlocked);
- if(body)body.inert=!unlocked;
- if(button){button.setAttribute('aria-pressed',String(unlocked));button.setAttribute('aria-label',unlocked?'Bloquear cronómetro':'Desbloquear cronómetro')}
- if(icon)icon.textContent=unlocked?'🔓':'🔒';
+ panel?.classList.toggle('timer-unlocked',timerUnlocked);
+ panel?.classList.toggle('timer-locked',isMobile&&!timerUnlocked);
+ if(body)body.inert=isMobile&&!timerUnlocked;
+ if(button){button.setAttribute('aria-pressed',String(timerUnlocked));button.setAttribute('aria-label',timerUnlocked?'Bloquear cronómetro':'Desbloquear cronómetro')}
+ if(icon)icon.textContent=timerUnlocked?'🔓':'🔒';
  clearTimeout(timerLockTimeout);
- if(unlocked)timerLockTimeout=setTimeout(()=>setTimerUnlocked(false),20000);
- else closeTimerEditor()
+ if(isMobile&&timerUnlocked)timerLockTimeout=setTimeout(()=>setTimerUnlocked(false),20000);
+ else if(!timerUnlocked)closeTimerEditor()
 }
 $('#timerLock').onclick=()=>setTimerUnlocked(!timerUnlocked);
-setTimerUnlocked(false);
+timerMobileQuery.addEventListener?.('change',()=>setTimerUnlocked(!timerMobileQuery.matches));
+setTimerUnlocked(!timerMobileQuery.matches);
 $('#timerDisplay').onclick=()=>{$('#timerEdit').value=timerMinuteValue();$('#timerEditor').classList.remove('hidden');setTimeout(()=>{$('#timerEdit').focus();$('#timerEdit').select()},30)};
 $('#timerStart').onclick=()=>{if(state.timerRunning)return;state.timerSeconds=timerValue();if(state.timerSeconds>=7200)return toast('El máximo es 120 minutos');state.timerStartedAt=Date.now();state.timerRunning=true;save();updateTimerDisplay()};
 $('#timerPause').onclick=()=>{state.timerSeconds=timerValue();state.timerRunning=false;state.timerStartedAt=null;save();updateTimerDisplay()};
