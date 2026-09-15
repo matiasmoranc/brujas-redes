@@ -11,12 +11,14 @@ function enterRole(role){
   $('#roleBadge').textContent=isAdmin?'Administrador':'Operador';
   $('#roleGate').classList.add('hidden');
   $('#mainApp').classList.remove('role-locked');
+  $('#mainApp').classList.toggle('operator-mode',!isAdmin);
   showRoleView(isAdmin?'setup':'live');
   window.scrollTo(0,0)
 }
 function resetRole(){
   currentRole=null;
   $('#mainApp').classList.add('role-locked');
+  $('#mainApp').classList.remove('operator-mode');
   $('#roleGate').classList.remove('hidden');
   $('#adminPasswordBox').classList.add('hidden');
   $('#adminPassword').value='';
