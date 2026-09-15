@@ -248,7 +248,19 @@ function setTimerUnlocked(unlocked){
  if(isMobile&&timerUnlocked)timerLockTimeout=setTimeout(()=>setTimerUnlocked(false),20000);
  else if(!timerUnlocked)closeTimerEditor()
 }
+function shakeTimerLock(){
+ const button=$('#timerLock');if(!button)return;
+ button.classList.remove('timer-lock-shake');void button.offsetWidth;button.classList.add('timer-lock-shake');
+ setTimeout(()=>button.classList.remove('timer-lock-shake'),380)
+}
 $('#timerLock').onclick=()=>setTimerUnlocked(!timerUnlocked);
+const timerGlass=$('#timerPanel')?.querySelector('.timer-glass');
+if(timerGlass)timerGlass.onclick=event=>{
+ if(!timerMobileQuery.matches||timerUnlocked)return;
+ const lockRect=$('#timerLock').getBoundingClientRect();
+ const touchedLock=event.clientX>=lockRect.left&&event.clientX<=lockRect.right&&event.clientY>=lockRect.top&&event.clientY<=lockRect.bottom;
+ if(touchedLock)setTimerUnlocked(true);else shakeTimerLock()
+};
 timerMobileQuery.addEventListener?.('change',()=>setTimerUnlocked(!timerMobileQuery.matches));
 setTimerUnlocked(!timerMobileQuery.matches);
 $('#timerDisplay').onclick=()=>{$('#timerEdit').value=timerMinuteValue();$('#timerEditor').classList.remove('hidden');setTimeout(()=>{$('#timerEdit').focus();$('#timerEdit').select()},30)};
