@@ -327,7 +327,7 @@ function recalculateMatch(){
  state.awayScore=state.events.filter(e=>e.type==='goal'&&e.side==='away').length;
  state.phase=phaseFromEvents()
 }
-$('#timeline').onclick=e=>{if(e.target.dataset.story!==undefined)openStory(state.events[+e.target.dataset.story]);if(e.target.dataset.undo!==undefined){const index=+e.target.dataset.undo,event=state.events[index];if(!event)return;state.events.splice(index,1);recalculateMatch();render();toast('Evento deshecho')}};
+$('#timeline').onclick=e=>{const storyButton=e.target.closest('[data-story]'),undoButton=e.target.closest('[data-undo]');if(storyButton){const event=state.events[Number(storyButton.dataset.story)];if(event)openStory(event);return}if(undoButton){const index=Number(undoButton.dataset.undo),event=state.events[index];if(!event)return;state.events.splice(index,1);recalculateMatch();render();toast('Evento deshecho')}};
 const closeModals=()=>$$('.modal').forEach(m=>m.classList.remove('open'));$$('[data-close]').forEach(b=>b.onclick=closeModals);$$('.modal').forEach(m=>m.onclick=e=>{if(e.target===m)closeModals()});
 function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200)}
 let pendingConfirm=null;
