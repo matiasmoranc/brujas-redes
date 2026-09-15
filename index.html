@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow+Condensed:wght@400;700;900&family=Bebas+Neue&family=Montserrat:wght@400;700;900&family=Oswald:wght@400;700&family=Playfair+Display:wght@400;700;900&family=Poppins:wght@400;700;900&family=Roboto+Condensed:wght@400;700;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20260916-5">
+  <link rel="stylesheet" href="styles.css?v=20260916-6">
 </head>
 <body>
 <section id="roleGate" class="role-gate">
@@ -16,7 +16,7 @@
     <div class="brand role-brand"><div class="brand-mark">⚡</div><h1>Brujas Redes</h1></div>
     <div class="role-grid">
       <button id="chooseOperator" class="role-card operator cm-card" type="button"><h3>CM</h3><strong>Ingresar <span aria-hidden="true">→</span></strong></button>
-      <button id="chooseAdmin" class="role-card admin-card" type="button"><span class="role-icon" aria-hidden="true">⚙</span><h3>Administrador</h3><strong aria-hidden="true">›</strong></button>
+      <button id="chooseAdmin" class="role-card admin-card" type="button"><span class="role-icon ui-icon" data-ui-icon="settings" aria-hidden="true"></span><h3>Administrador</h3><strong aria-hidden="true">›</strong></button>
     </div>
     <div id="adminPasswordBox" class="admin-password hidden">
       <label for="adminPassword">Contraseña de administrador</label>
@@ -139,29 +139,29 @@
           <div class="team"><div id="liveAwayLogo"></div><strong id="liveAwayName">Visitante</strong></div>
         </div>
         <div id="timerPanel" class="match-timer timer-locked">
-          <div class="timer-head"><span>CRONÓMETRO</span><button id="timerLock" class="timer-lock" type="button" aria-label="Desbloquear cronómetro" aria-pressed="false"><span id="timerLockIcon" aria-hidden="true">🔒</span></button></div>
+          <div class="timer-head"><span>CRONÓMETRO</span><button id="timerLock" class="timer-lock" type="button" aria-label="Desbloquear cronómetro" aria-pressed="false"><span id="timerLockIcon" class="ui-icon" data-ui-icon="lock" aria-hidden="true"></span></button></div>
           <div class="timer-body">
             <button id="timerDisplay" class="timer-display" type="button" title="Tocar para modificar el minuto">00:00</button>
             <div id="timerMinute" class="timer-minute">MIN 0' · TOCÁ EL TIEMPO PARA EDITAR</div>
             <div id="timerEditor" class="timer-inline-edit hidden"><button id="timerMinus" class="timer-step" type="button" aria-label="Restar un minuto">−</button><input id="timerEdit" type="number" inputmode="numeric" min="0" max="120" aria-label="Minuto del partido"><button id="timerPlus" class="timer-step" type="button" aria-label="Sumar un minuto">+</button><button id="timerApply" type="button">✓ Aplicar</button></div>
             <div class="timer-actions">
-              <button id="timerStart" type="button" aria-pressed="false">▶ Iniciar</button>
-              <button id="timerPause" type="button" aria-pressed="true">⏸ Pausar</button>
-              <button id="timerReset" type="button">↺ Reiniciar</button>
+              <button id="timerStart" type="button" aria-pressed="false"><span class="ui-icon" data-ui-icon="play" aria-hidden="true"></span>Iniciar</button>
+              <button id="timerPause" type="button" aria-pressed="true"><span class="ui-icon" data-ui-icon="pause" aria-hidden="true"></span>Pausar</button>
+              <button id="timerReset" type="button"><span class="ui-icon" data-ui-icon="reset" aria-hidden="true"></span>Reiniciar</button>
             </div>
           </div>
           <div class="timer-glass" aria-hidden="true"></div>
         </div>
         <div class="event-grid">
-          <button class="event main" data-event="goalHome">⚽ Gol local</button>
-          <button class="event main" data-event="goalAway">⚽ Gol visitante</button>
-          <button class="event" data-event="start">▶ Inicio</button>
-          <button class="event" data-event="halftime">⏸ Entretiempo</button>
-          <button class="event" data-event="secondhalf">▶ Segundo tiempo</button>
-          <button class="event" data-event="final">🏁 Final</button>
+          <button class="event main" data-event="goalHome"><span class="ui-icon" data-ui-icon="goal" aria-hidden="true"></span>Gol local</button>
+          <button class="event main" data-event="goalAway"><span class="ui-icon" data-ui-icon="goal" aria-hidden="true"></span>Gol visitante</button>
+          <button class="event" data-event="start"><span class="ui-icon" data-ui-icon="play" aria-hidden="true"></span>Inicio</button>
+          <button class="event" data-event="halftime"><span class="ui-icon" data-ui-icon="pause" aria-hidden="true"></span>Entretiempo</button>
+          <button class="event" data-event="secondhalf"><span class="ui-icon" data-ui-icon="play" aria-hidden="true"></span>Segundo tiempo</button>
+          <button class="event" data-event="final"><span class="ui-icon" data-ui-icon="flag" aria-hidden="true"></span>Final</button>
         </div>
       </div>
-      <aside class="card"><h2>Eventos</h2><p class="sub">Cada evento crea una historia lista para descargar.</p><div id="timeline" class="timeline"></div></aside>
+      <aside class="card events-card"><h2>Historial del partido</h2><p class="sub">Eventos e historias generadas durante el partido.</p><div id="timeline" class="timeline"></div></aside>
     </div>
   </section>
 </main>
@@ -171,7 +171,7 @@
 <div id="publishModal" class="modal"><div class="sheet"><div class="sheet-head"><h3>Confirmar publicación</h3><button class="close" data-close>×</button></div><div class="field" style="margin-top:18px"><label>Contraseña de publicación</label><input id="publishPassword" type="password" autocomplete="current-password" placeholder="Ingresá la contraseña"></div><div class="notice">Esta acción publicará ahora la historia en @brujasfpcoficial.</div><div class="sheet-actions"><button class="secondary" data-close>Cancelar</button><button id="confirmPublish" class="primary">Confirmar y publicar</button></div></div></div>
 <div id="confirmModal" class="modal"><div class="sheet"><div class="sheet-head"><h3>Confirmar acción</h3><button id="confirmClose" class="close" type="button">×</button></div><p id="confirmMessage" class="notice" style="margin-top:18px"></p><div class="sheet-actions"><button id="confirmCancel" class="secondary" type="button">Cancelar</button><button id="confirmAccept" class="danger" type="button">Confirmar</button></div></div></div>
 <div id="toast" class="toast"></div>
-<script src="app.js?v=20260916-4"></script>
+<script src="app.js?v=20260916-5"></script>
 <script type="module" src="firebase.js?v=20260915-2"></script>
 </body>
 </html>
