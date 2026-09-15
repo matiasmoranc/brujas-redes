@@ -199,11 +199,9 @@ function render(){
   const names={goal:'Gol',start:'Inicio del partido',halftime:'Entretiempo',secondhalf:'Segundo tiempo',final:'Final del partido'};
   const iconNames={goal:'goal',start:'play',halftime:'pause',secondhalf:'play',final:'flag'};
   const marker=event.type==='goal'?`${event.minute??0}'`:{start:'INICIO',halftime:'ET',secondhalf:'2T',final:'FINAL'}[event.type]||'—';
-  const title=event.type==='goal'?(event.side==='home'?`Gol de ${event.scorer||state.homeName}`:`Gol de ${state.awayName||'visitante'}`):(names[event.type]||event.title);
-  const detail=event.type==='goal'?`${event.side==='home'?'Local':'Visitante'} · ${event.homeScore??state.homeScore}–${event.awayScore??state.awayScore}`:(event.subtitle||'Historia generada');
-  const status=event.publishStatus==='published'?'Publicada':event.publishStatus==='error'?'Error':'Generada';
-  const statusClass=event.publishStatus==='published'?'published':event.publishStatus==='error'?'error':'generated';
-  return `<div class="log"><div class="log-time">${esc(marker)}</div><div class="log-icon">${uiIcon(iconNames[event.type]||'goal')}</div><div class="log-info"><div class="log-title"><strong>${esc(title)}</strong><span class="story-status ${statusClass}">${status}</span></div><span>${esc(detail)}</span></div><div class="log-actions"><button data-story="${index}" aria-label="Ver historia">${uiIcon('eye')}<span>Ver</span></button><button data-undo="${index}" aria-label="Deshacer evento">${uiIcon('undo')}<span>Deshacer</span></button></div></div>`
+   const score=`${event.homeScore??state.homeScore}–${event.awayScore??state.awayScore}`;
+   const title=event.type==='goal'?(event.side==='home'?`Gol de ${event.scorer||state.homeName} · ${score}`:`Gol visitante · ${score}`):(names[event.type]||event.title);
+   return `<div class="log"><div class="log-time">${esc(marker)}</div><div class="log-icon">${uiIcon(iconNames[event.type]||'goal')}</div><div class="log-info"><strong>${esc(title)}</strong></div><div class="log-actions"><button data-story="${index}" aria-label="Ver historia">${uiIcon('eye')}<span>Ver</span></button><button data-undo="${index}" aria-label="Deshacer evento">${uiIcon('undo')}<span>Deshacer</span></button></div></div>`
  }).join(''):'<div class="timeline-empty">Los eventos del partido aparecerán acá.</div>';
  renderPresetChooser();renderDesigner();renderTeams();save()
 }
