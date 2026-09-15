@@ -14,7 +14,7 @@ const legacyRef=doc(db,"shared","brujas-redes");
 const sectionNames=["config","live","designs","teams"];
 const sectionRefs=Object.fromEntries(sectionNames.map(name=>[name,doc(db,"shared",`brujas-redes-${name}`)]));
 const status=document.getElementById("syncStatus");
-let lastCloudJson={},saveTimer=null,applyingCloud=false,cloudReady=false;
+let lastCloudJson={},latestLocalJson={},localRevision={},dirtySections=new Set(),savingSections=new Set(),saveTimer=null,applyingCloud=false,cloudReady=false;
 window.brujasCloudReady=false;
 const setStatus=(text,error=false)=>{if(!status)return;status.lastChild.textContent=text;status.style.color=error?"#ff9696":"";const dot=status.querySelector("i");if(dot)dot.style.background=error?"#ff5d5d":""};
 const clean=data=>{const value={...(data||{})};delete value.updatedAt;return value};
@@ -30,22 +30,42 @@ const legacySections=data=>{
 window.queueBrujasCloudSave=()=>{
  if(applyingCloud)return;
  if(!cloudReady){setStatus("Cargando datos…");return}
+ const current=window.getBrujasCloudSections();
+ sectionNames.forEach(name=>{
+  const json=JSON.stringify(current[name]);
+  if(json!==latestLocalJson[name]){
+   latestLocalJson[name]=json;
+   localRevision[name]=(localRevision[name]||0)+1;
+   dirtySections.add(name)
+  }
+ });
  clearTimeout(saveTimer);
- saveTimer=setTimeout(async()=>{
-  const sections=window.getBrujasCloudSections();
-  const changed=sectionNames.filter(name=>JSON.stringify(sections[name])!==lastCloudJson[name]);
-  if(!changed.length)return;
-  setStatus("Guardando…");
-  try{
-   await Promise.all(changed.map(async name=>{
-    const data=sections[name];
-    await setDoc(sectionRefs[name],{...data,updatedAt:serverTimestamp()});
-    lastCloudJson[name]=JSON.stringify(data)
-   }));
-   setStatus("Sincronizado")
-  }catch(error){console.error("No se pudo sincronizar",error);setStatus("Error de sincronización",true)}
- },650)
+ saveTimer=setTimeout(flushCloudSave,250)
 };
+async function flushCloudSave(){
+ saveTimer=null;
+ const sections=window.getBrujasCloudSections();
+ const pending=sectionNames.filter(name=>dirtySections.has(name)&&!savingSections.has(name));
+ if(!pending.length)return;
+ setStatus("Guardando…");
+ try{
+  await Promise.all(pending.map(async name=>{
+   const data=sections[name],json=JSON.stringify(data),revision=localRevision[name]||0;
+   savingSections.add(name);
+   try{
+    await setDoc(sectionRefs[name],{...data,updatedAt:serverTimestamp()});
+    lastCloudJson[name]=json;
+    if((localRevision[name]||0)===revision&&latestLocalJson[name]===json)dirtySections.delete(name)
+   }finally{savingSections.delete(name)}
+  }));
+  if(dirtySections.size){clearTimeout(saveTimer);saveTimer=setTimeout(flushCloudSave,100)}
+  else setStatus("Sincronizado")
+ }catch(error){
+  console.error("No se pudo sincronizar",error);
+  setStatus("Error de sincronización",true);
+  clearTimeout(saveTimer);saveTimer=setTimeout(flushCloudSave,2000)
+ }
+}
 async function initializeCloud(){
  setStatus("Cargando datos…");
  const [legacySnapshot,...snapshots]=await Promise.all([getDoc(legacyRef),...sectionNames.map(name=>getDoc(sectionRefs[name]))]);
@@ -63,6 +83,8 @@ async function initializeCloud(){
   const data=snapshot.exists()?clean(snapshot.data()):fallback[name];
   if(!snapshot.exists())await setDoc(sectionRefs[name],{...data,updatedAt:serverTimestamp()});
   lastCloudJson[name]=JSON.stringify(data);
+  latestLocalJson[name]=lastCloudJson[name];
+  localRevision[name]=0;
   applyingCloud=true;window.applyBrujasCloudSection(name,data);applyingCloud=false
  }
  cloudReady=true;window.brujasCloudReady=true;
@@ -72,7 +94,9 @@ async function initializeCloud(){
   if(!snapshot.exists())return;
   const data=clean(snapshot.data()),json=JSON.stringify(data);
   if(json===lastCloudJson[name])return;
-  lastCloudJson[name]=json;applyingCloud=true;window.applyBrujasCloudSection(name,data);applyingCloud=false;
+  if(dirtySections.has(name)||savingSections.has(name))return;
+  lastCloudJson[name]=json;latestLocalJson[name]=json;
+  applyingCloud=true;window.applyBrujasCloudSection(name,data);applyingCloud=false;
   setStatus("Sincronizado")
  },error=>{console.error("No se pudo leer "+name,error);setStatus("Sin conexión con la nube",true)}))
 }
