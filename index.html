@@ -62,6 +62,15 @@
       </div>
       <aside class="card preview-shell"><h2>Vista previa</h2><p class="sub">Así se verá la historia de inicio.</p><div class="phone"><div id="setupStory" class="story"></div></div></aside>
     </div>
+    <div class="card backup-card">
+      <h2>Copia de seguridad</h2>
+      <p class="sub">Descargá equipos, jugadores, diseños y el partido actual. Podés restaurarlos más adelante desde este mismo panel.</p>
+      <div class="backup-actions">
+        <button id="exportBackup" class="secondary" type="button">↓ Exportar copia</button>
+        <button id="chooseBackup" class="primary" type="button">↥ Restaurar copia</button>
+        <input id="restoreBackupFile" class="hidden" type="file" accept="application/json,.json">
+      </div>
+    </div>
   </section>
 
   <section id="teams" class="view" data-admin-only>
