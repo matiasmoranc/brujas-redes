@@ -49,7 +49,15 @@ window.queueBrujasCloudSave=()=>{
 async function initializeCloud(){
  setStatus("Cargando datos…");
  const [legacySnapshot,...snapshots]=await Promise.all([getDoc(legacyRef),...sectionNames.map(name=>getDoc(sectionRefs[name]))]);
- const fallback=legacySections(legacySnapshot.exists()?legacySnapshot.data():window.getBrujasCloudData());
+ const local=window.getBrujasCloudSections();
+ const legacy=legacySections(legacySnapshot.exists()?legacySnapshot.data():window.getBrujasCloudData());
+ const useLocal={
+  config:!!(local.config.homeLogo||local.config.awayLogo||local.config.awayName||local.config.players?.length),
+  live:!!(local.live.homeScore||local.live.awayScore||local.live.events?.length||local.live.timerSeconds||local.live.phase!=='Partido sin iniciar'),
+  designs:!!(local.designs.activeDesign||Object.keys(local.designs.savedDesigns||{}).length),
+  teams:!!local.teams.teams?.length
+ };
+ const fallback=Object.fromEntries(sectionNames.map(name=>[name,useLocal[name]?local[name]:legacy[name]]));
  for(let index=0;index<sectionNames.length;index++){
   const name=sectionNames[index],snapshot=snapshots[index];
   const data=snapshot.exists()?clean(snapshot.data()):fallback[name];
