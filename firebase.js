@@ -12,7 +12,7 @@ const firebaseConfig={
 const db=getFirestore(initializeApp(firebaseConfig));
 const legacyRef=doc(db,"shared","brujas-redes");
 const sectionNames=["config","live","designs","teams"];
-const sectionRefs=Object.fromEntries(sectionNames.map(name=>[name,doc(db,"brujas-redes",name)]));
+const sectionRefs=Object.fromEntries(sectionNames.map(name=>[name,doc(db,"shared",`brujas-redes-${name}`)]));
 const status=document.getElementById("syncStatus");
 let lastCloudJson={},saveTimer=null,applyingCloud=false,cloudReady=false;
 window.brujasCloudReady=false;
