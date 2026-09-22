@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow+Condensed:wght@400;700;900&family=Bebas+Neue&family=Montserrat:wght@400;700;900&family=Oswald:wght@400;700&family=Playfair+Display:wght@400;700;900&family=Poppins:wght@400;700;900&family=Roboto+Condensed:wght@400;700;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20260916-10">
+  <link rel="stylesheet" href="styles.css?v=20260922-lineup1">
 </head>
 <body>
 <section id="roleGate" class="role-gate">
@@ -152,6 +152,7 @@
           </div>
           <div class="timer-glass" aria-hidden="true"></div>
         </div>
+        <button id="openLineup" class="secondary lineup-open" type="button"><span class="ui-icon" data-ui-icon="formation" aria-hidden="true"></span>11 titular</button>
         <div class="event-grid">
           <button class="event main" data-event="goalHome"><span class="ui-icon" data-ui-icon="goal" aria-hidden="true"></span><span class="event-label">Gol local</span></button>
           <button class="event main" data-event="goalAway"><span class="ui-icon" data-ui-icon="goal" aria-hidden="true"></span><span class="event-label">Gol visitante</span></button>
@@ -166,12 +167,13 @@
   </section>
 </main>
 
+<div id="lineupModal" class="modal"><div class="sheet lineup-sheet"><div class="sheet-head"><h3>11 titular <small id="lineupCount"></small></h3><button class="close" data-close aria-label="Cerrar alineación">×</button></div><div class="field lineup-formation"><label for="lineupFormation">Formación</label><select id="lineupFormation"><option value="442">4–4–2</option><option value="433">4–3–3</option><option value="343">3–4–3</option><option value="352">3–5–2</option></select></div><div id="lineupPitch" class="lineup-pitch"></div><div class="sheet-actions"><button class="secondary" data-close>Cerrar</button><button id="createLineup" class="primary">Crear historia</button></div></div></div>
 <div id="goalModal" class="modal"><div class="sheet"><div class="sheet-head"><h3 id="goalTitle">Registrar gol</h3><button class="close" data-close>×</button></div><div class="form-grid" style="margin-top:18px"><div class="field"><label>Jugador</label><select id="scorer"></select></div><div class="field"><label>Minuto</label><input id="minute" type="number" min="0" max="120" placeholder="Ej: 37"></div></div><div class="notice">Antes de guardar podés confirmar jugador, minuto y equipo. El marcador se actualiza al confirmar.</div><div class="sheet-actions"><button class="secondary" data-close>Cancelar</button><button id="confirmGoal" class="primary">Confirmar gol</button></div></div></div>
 <div id="storyModal" class="modal"><div class="sheet"><div class="sheet-head"><h3>Historia generada</h3><button class="close" data-close>×</button></div><div class="phone" style="margin-top:16px"><div id="finalStory" class="story"></div></div><div class="sheet-actions"><button class="secondary" data-close>Cerrar</button><button id="downloadStory" class="secondary">Descargar PNG</button><button id="publishStory" class="primary">Publicar en Instagram</button></div><div class="notice">Revisá la historia antes de publicarla. La publicación se realizará inmediatamente en @brujasfpcoficial.</div></div></div>
 <div id="publishModal" class="modal"><div class="sheet"><div class="sheet-head"><h3>Confirmar publicación</h3><button class="close" data-close>×</button></div><div class="field" style="margin-top:18px"><label>Contraseña de publicación</label><input id="publishPassword" type="password" autocomplete="current-password" placeholder="Ingresá la contraseña"></div><div class="notice">Esta acción publicará ahora la historia en @brujasfpcoficial.</div><div class="sheet-actions"><button class="secondary" data-close>Cancelar</button><button id="confirmPublish" class="primary">Confirmar y publicar</button></div></div></div>
 <div id="confirmModal" class="modal"><div class="sheet"><div class="sheet-head"><h3>Confirmar acción</h3><button id="confirmClose" class="close" type="button">×</button></div><p id="confirmMessage" class="notice" style="margin-top:18px"></p><div class="sheet-actions"><button id="confirmCancel" class="secondary" type="button">Cancelar</button><button id="confirmAccept" class="danger" type="button">Confirmar</button></div></div></div>
 <div id="toast" class="toast"></div>
-<script src="app.js?v=20260916-9"></script>
+<script src="app.js?v=20260922-lineup1"></script>
 <script type="module" src="firebase.js?v=20260916-1"></script>
 </body>
 </html>
