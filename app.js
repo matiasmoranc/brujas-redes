@@ -52,6 +52,7 @@ document.addEventListener('dblclick',event=>event.preventDefault(),{passive:fals
 
 const $=s=>document.querySelector(s),$$=s=>document.querySelectorAll(s);
 const uiIconShapes={
+ formation:'<rect x="3" y="2" width="18" height="20" rx="2"/><path d="M3 12h18"/><circle cx="12" cy="12" r="3"/>',
  goal:'<circle cx="12" cy="12" r="9"/><path d="m12 7 3 2-1 4h-4L9 9l3-2ZM10 13l-3 2m7-2 3 2M9 9 6 8m9 1 3-1m-8 9 2 3 2-3"/>',
  play:'<path d="m8 5 11 7-11 7V5Z"/>',
  pause:'<path d="M9 5v14M15 5v14"/>',
@@ -65,7 +66,7 @@ const uiIconShapes={
 };
 function uiIcon(name){return `<svg viewBox="0 0 24 24" aria-hidden="true">${uiIconShapes[name]||uiIconShapes.goal}</svg>`}
 $$('[data-ui-icon]').forEach(element=>element.innerHTML=uiIcon(element.dataset.uiIcon));
-const fresh={homeName:'Brujas',awayName:'',homeLogo:'',awayLogo:'',players:[],homeScore:0,awayScore:0,phase:'Partido sin iniciar',events:[],timerSeconds:0,timerRunning:false,timerStartedAt:null,matchDay:'SÁBADO',matchTime:'11:00 AM',matchPlace:'COMPLEJO MICROSULES'};
+const fresh={homeName:'Brujas',awayName:'',homeLogo:'',awayLogo:'',players:[],homeScore:0,awayScore:0,phase:'Partido sin iniciar',events:[],lineup:{formation:'442',players:[]},timerSeconds:0,timerRunning:false,timerStartedAt:null,matchDay:'SÁBADO',matchTime:'11:00 AM',matchPlace:'COMPLEJO MICROSULES'};
 let state={...fresh,...JSON.parse(localStorage.getItem('brujasMatch')||'{}')},goalSide='home',selectedEvent=null;
 const actionLocks=new Map();
 let publishingStory=false;
@@ -161,6 +162,7 @@ function storyIcon(type){
   :`<svg ${common}><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>`
 }
 function storyHTML(ev,interactive=false){
+ if(ev.type==='lineup')return '<div role="status">Preparando 11 titular…</div>';
  const f=formatNames[ev.type]?ev.type:'start',c=formats[f],eventScore=scoreForEvent(ev),score=`${eventScore.home}–${eventScore.away}`,mid=(f==='start'||f==='upcoming')?'VS':score,isScoreboard=f==='goal'||resultFormats.includes(f);
  const heading=f==='goal'?goalPeriod(ev):c.title;
  let h=`<div class="story-item story-title${editClass('title',interactive)}" data-element="${interactive?'title':''}" style="${itemStyle('title',c)}">${esc(heading)}</div><div class="story-item story-line${editClass('line',interactive)}" data-element="${interactive?'line':''}" style="left:${c.elements.line.x}%;top:${c.elements.line.y}%;width:${c.elements.line.size/10.8}cqw;height:${c.elements.line.height/10.8}cqw;background:${c.elements.line.color}"></div>`;
@@ -196,9 +198,9 @@ function render(){
  state.phase=phaseFromEvents();$('#homeScore').textContent=state.homeScore;$('#awayScore').textContent=state.awayScore;$('#phase').textContent=state.phase;updateTimerDisplay();
  $('#timeline').innerHTML=state.events.length?state.events.slice().reverse().map((event,reverseIndex)=>{
   const index=state.events.length-1-reverseIndex;
-  const names={goal:'Gol',start:'Inicio del partido',halftime:'Entretiempo',secondhalf:'Segundo tiempo',final:'Final del partido'};
-  const iconNames={goal:'goal',start:'play',halftime:'pause',secondhalf:'play',final:'flag'};
-  const marker=event.type==='goal'?`${event.minute??0}'`:{start:'INICIO',halftime:'ET',secondhalf:'2T',final:'FINAL'}[event.type]||'—';
+  const names={lineup:'11 titular',goal:'Gol',start:'Inicio del partido',halftime:'Entretiempo',secondhalf:'Segundo tiempo',final:'Final del partido'};
+  const iconNames={lineup:'formation',goal:'goal',start:'play',halftime:'pause',secondhalf:'play',final:'flag'};
+  const marker=event.type==='goal'?`${event.minute??0}'`:{lineup:'XI',start:'INICIO',halftime:'ET',secondhalf:'2T',final:'FINAL'}[event.type]||'—';
    const score=`${event.homeScore??state.homeScore}–${event.awayScore??state.awayScore}`;
    const title=event.type==='goal'?(event.side==='home'?`Gol de ${event.scorer||state.homeName} · ${score}`:`Gol visitante · ${score}`):(names[event.type]||event.title);
    return `<div class="log"><div class="log-time">${esc(marker)}</div><div class="log-icon">${uiIcon(iconNames[event.type]||'goal')}</div><div class="log-info"><strong>${esc(title)}</strong></div><div class="log-actions"><button data-story="${index}" aria-label="Ver historia">${uiIcon('eye')}<span>Ver</span></button><button data-undo="${index}" aria-label="Deshacer evento">${uiIcon('undo')}<span>Deshacer</span></button></div></div>`
@@ -237,7 +239,7 @@ $('#teamLibrary').onclick=e=>{const b=e.target.closest('[data-team-action]');if(
 function addPlayer(){const p=$('#playerInput').value.trim();if(!p)return;state.players.push(p);$('#playerInput').value='';render()}
 $('#addPlayer').onclick=addPlayer;$('#playerInput').onkeydown=e=>{if(e.key==='Enter')addPlayer()};$('#playerList').onclick=e=>{if(e.target.dataset.remove!==undefined){state.players.splice(+e.target.dataset.remove,1);render()}};
 $('#upcomingStory').onclick=()=>{if(!state.awayName.trim()||!state.matchDay.trim()||!state.matchTime.trim()||!state.matchPlace.trim())return toast('Completá rival, día, hora y lugar');openStory(sampleEvent('upcoming'))};
-$('#startMatch').onclick=()=>{if(!state.homeName.trim()||!state.awayName.trim())return toast('Ingresá ambos equipos');state.homeScore=0;state.awayScore=0;state.phase='Partido sin iniciar';state.events=[];render();switchView('live');toast('Partido creado')};
+$('#startMatch').onclick=()=>{if(!state.homeName.trim()||!state.awayName.trim())return toast('Ingresá ambos equipos');state.homeScore=0;state.awayScore=0;state.phase='Partido sin iniciar';state.events=[];state.lineup={formation:'442',players:[]};render();switchView('live');toast('Partido creado')};
 function addEvent(type,subtitle,icon){const ev={...sampleEvent(type),title:formats[type].title,subtitle,icon,time:Date.now(),homeScore:state.homeScore,awayScore:state.awayScore};state.events.push(ev);selectedEvent=ev;render();openStory(ev)}
 document.querySelectorAll('.event').forEach(b=>b.onclick=()=>{const t=b.dataset.event;if(!acquireActionLock('event-'+t,1200))return;if(t==='goalHome'||t==='goalAway')return openGoal(t==='goalHome'?'home':'away');b.disabled=true;setTimeout(()=>b.disabled=false,1200);const phases={start:'En juego',halftime:'Entretiempo',secondhalf:'Segundo tiempo',final:'Finalizado'},subs={start:'Rueda la pelota',halftime:'Resultado parcial',secondhalf:'Vuelve a rodar la pelota',final:'Resultado final'},icons={start:'play',halftime:'pause',secondhalf:'play',final:'flag'};state.phase=phases[t];addEvent(t,subs[t],icons[t])});
 function timerValue(){
@@ -314,7 +316,7 @@ async function openStory(ev){
  }catch(error){console.error('No se pudo generar la vista previa exacta',error)}
 }
 function phaseFromEvents(){
- const last=state.events.at(-1);
+ const last=state.events.filter(event=>event.type!=='lineup').at(-1);
  if(!last)return 'Partido sin iniciar';
  if(last.type==='final')return 'Finalizado';
  if(last.type==='halftime')return 'Entretiempo';
@@ -406,6 +408,7 @@ function drawTextWithIcon(ctx,text,e,type){
  ctx.stroke();ctx.textAlign='left';ctx.fillText(text,left+icon+gap,cy);ctx.restore()
 }
 async function buildStoryImage(event=selectedEvent){
+ if(event?.type==='lineup')return buildLineupImage(event);
  if(!event)return null;
  const ev={...event},f=ev.type,cfg=JSON.parse(JSON.stringify(formats[f]));
  const storyState={homeName:state.homeName,awayName:state.awayName,homeLogo:state.homeLogo,awayLogo:state.awayLogo,matchDay:state.matchDay,matchTime:state.matchTime,matchPlace:state.matchPlace};
@@ -510,7 +513,7 @@ $('#confirmPublish').onclick=async()=>{
  }finally{publishingStory=false;button.disabled=false;button.textContent=original}
 };
 const configStateKeys=['homeName','awayName','homeLogo','awayLogo','players','matchDay','matchTime','matchPlace'];
-const liveStateKeys=['homeScore','awayScore','phase','events','timerSeconds','timerRunning','timerStartedAt'];
+const liveStateKeys=['homeScore','awayScore','phase','events','lineup','timerSeconds','timerRunning','timerStartedAt'];
 const pickState=keys=>Object.fromEntries(keys.map(key=>[key,state[key]]));
 window.getBrujasCloudSections=()=>({
  config:pickState(configStateKeys),
@@ -587,4 +590,78 @@ $('#restoreBackupFile').onchange=async event=>{
  }catch(error){console.error('No se pudo restaurar la copia',error);toast('El archivo no es una copia válida')}
  finally{input.value=''}
 };
+
+const lineupFormations={'442':[4,4,2],'433':[4,3,3],'343':[3,4,3],'352':[3,5,2]};
+function lineupPositions(formation){
+ const rows=lineupFormations[formation]||lineupFormations['442'];
+ return [{x:50,y:88,label:'Arquero'},...rows.flatMap((count,row)=>Array.from({length:count},(_,i)=>({x:(i+.5)*100/count,y:[65,40,15][row],label:['Defensa','Medio','Delantero'][row]+' '+(i+1)})))];
+}
+let lineupDraft=null;
+function renderLineup(){
+ const positions=lineupPositions(lineupDraft.formation),players=[...new Set(state.players)];
+ $('#lineupFormation').value=lineupDraft.formation;
+ $('#lineupPitch').innerHTML='<div class="pitch-lines" aria-hidden="true"><i></i></div>'+positions.map((p,i)=>{
+ const current=lineupDraft.players[i]||'';
+ return `<label class="lineup-slot" style="left:${p.x}%;top:${p.y}%"><span class="lineup-shirt" aria-hidden="true">${i===0?'ARQ':i+1}</span><select data-lineup-slot="${i}" aria-label="${esc(p.label)}"><option value="">${esc(p.label)}</option>${players.map(name=>`<option value="${esc(name)}" ${name===current?'selected':''} ${name!==current&&lineupDraft.players.includes(name)?'disabled':''}>${esc(name)}</option>`).join('')}</select></label>`
+ }).join('');
+ const count=lineupDraft.players.filter(p=>players.includes(p)).length;
+ $('#lineupCount').textContent=count+'/11';
+ $('#createLineup').disabled=count!==11||new Set(lineupDraft.players).size!==11;
+}
+$('#openLineup').onclick=()=>{
+ const saved=state.lineup||{};
+ lineupDraft={formation:lineupFormations[saved.formation]?saved.formation:'442',players:Array.from({length:11},(_,i)=>state.players.includes(saved.players?.[i])?saved.players[i]:'')};
+ renderLineup();$('#lineupModal').classList.add('open');
+};
+$('#lineupFormation').onchange=e=>{
+ lineupDraft.formation=e.target.value;state.lineup=JSON.parse(JSON.stringify(lineupDraft));save();renderLineup()
+};
+$('#lineupPitch').onchange=e=>{
+ const select=e.target.closest('[data-lineup-slot]');if(!select)return;
+ const i=Number(select.dataset.lineupSlot),name=select.value;
+ if(name&&lineupDraft.players.some((p,index)=>index!==i&&p===name))return toast('Ese jugador ya está en la cancha');
+ lineupDraft.players[i]=name;state.lineup=JSON.parse(JSON.stringify(lineupDraft));save();renderLineup()
+};
+$('#createLineup').onclick=()=>{
+ if(lineupDraft.players.length!==11||lineupDraft.players.some(p=>!p||!state.players.includes(p))||new Set(lineupDraft.players).size!==11)return toast('Elegí 11 jugadores diferentes');
+ if(!acquireActionLock('lineup',1200))return;
+ const ev={type:'lineup',title:'11 TITULAR',time:Date.now(),formation:lineupDraft.formation,players:[...lineupDraft.players],homeName:state.homeName,awayName:state.awayName,homeLogo:state.homeLogo};
+ state.lineup=JSON.parse(JSON.stringify(lineupDraft));state.events.push(ev);closeModals();render();openStory(ev)
+};
+async function buildLineupImage(event){
+ const ev=JSON.parse(JSON.stringify(event)),canvas=document.createElement('canvas');canvas.width=1080;canvas.height=1920;
+ const ctx=canvas.getContext('2d'),[base,logo]=await Promise.all([imgLoad('assets/story-base.jpg'),imgLoad(ev.homeLogo)]);
+ ctx.fillStyle='#f5f5f2';ctx.fillRect(0,0,1080,1920);if(base)ctx.drawImage(base,0,0,1080,1920);
+ function textFit(text,x,y,size,width,color='#111',weight=800){
+  ctx.fillStyle=color;ctx.textAlign='center';ctx.textBaseline='middle';
+  let fontSize=size;ctx.font=weight+' '+fontSize+'px Arial';
+  while(ctx.measureText(text).width>width&&fontSize>14){fontSize--;ctx.font=weight+' '+fontSize+'px Arial'}
+  ctx.fillText(text,x,y,width)
+ }
+ if(logo)drawContain(ctx,logo,540,205,160);
+ textFit('11 TITULAR',540,350,76,870);
+ textFit((ev.homeName||'LOCAL').toUpperCase(),540,432,38,850,'#ff5a00');
+ textFit(ev.formation.split('').join('–'),540,494,32,800);
+ const left=75,top=570,w=930,h=1030;
+ ctx.fillStyle='#133b29';ctx.fillRect(left,top,w,h);
+ for(let i=0;i<8;i++){ctx.fillStyle=i%2?'#ffffff04':'#ffffff0c';ctx.fillRect(left,top+i*h/8,w,h/8)}
+ ctx.strokeStyle='#c6dfca';ctx.lineWidth=3;
+ ctx.strokeRect(left+18,top+18,w-36,h-36);
+ ctx.beginPath();ctx.moveTo(left+18,top+h/2);ctx.lineTo(left+w-18,top+h/2);ctx.stroke();
+ ctx.beginPath();ctx.arc(540,top+h/2,110,0,Math.PI*2);ctx.stroke();
+ ctx.strokeRect(330,top+18,420,145);ctx.strokeRect(425,top+18,230,55);
+ ctx.strokeRect(330,top+h-163,420,145);ctx.strokeRect(425,top+h-73,230,55);
+ lineupPositions(ev.formation).forEach((p,i)=>{
+  const x=left+p.x*w/100,y=top+p.y*h/100;
+  ctx.fillStyle=i===0?'#b9ff42':'#ff6509';
+  ctx.beginPath();ctx.moveTo(x-18,y-34);ctx.lineTo(x-48,y-20);ctx.lineTo(x-36,y+2);ctx.lineTo(x-25,y-4);ctx.lineTo(x-25,y+38);ctx.lineTo(x+25,y+38);ctx.lineTo(x+25,y-4);ctx.lineTo(x+36,y+2);ctx.lineTo(x+48,y-20);ctx.lineTo(x+18,y-34);ctx.closePath();ctx.fill();
+  textFit(i===0?'ARQ':String(i+1),x,y+3,23,50,'#101810');
+  const name=ev.players[i]||'',width=ev.formation==='352'&&i>=4&&i<=8?170:210;
+  ctx.fillStyle='#092316';ctx.fillRect(x-width/2,y+46,width,64);
+  textFit(name,x,y+78,30,width-12,'#ffffff',700)
+ });
+ if(ev.awayName)textFit('VS '+ev.awayName.toUpperCase(),540,1660,30,820);
+ return {imageData:canvas.toDataURL('image/png'),type:'lineup'}
+}
+
 render();
