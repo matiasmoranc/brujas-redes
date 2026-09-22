@@ -258,7 +258,6 @@ $('#playerList').onchange=e=>{
 function addPlayer(){const p=$('#playerInput').value.trim();if(!p)return;state.players.push(p);$('#playerInput').value='';render()}
 $('#addPlayer').onclick=addPlayer;$('#playerInput').onkeydown=e=>{if(e.key==='Enter')addPlayer()};$('#playerList').onclick=e=>{if(e.target.dataset.remove!==undefined){state.players.splice(+e.target.dataset.remove,1);render()}};
 $('#upcomingStory').onclick=()=>{if(!state.awayName.trim()||!state.matchDay.trim()||!state.matchTime.trim()||!state.matchPlace.trim())return toast('Completá rival, día, hora y lugar');openStory(sampleEvent('upcoming'))};
-$('#startMatch').onclick=()=>{if(!state.homeName.trim()||!state.awayName.trim())return toast('Ingresá ambos equipos');state.homeScore=0;state.awayScore=0;state.phase='Partido sin iniciar';state.events=[];state.lineup={formation:'442',players:[]};render();switchView('live');toast('Partido creado')};
 function addEvent(type,subtitle,icon){const ev={...sampleEvent(type),title:formats[type].title,subtitle,icon,time:Date.now(),homeScore:state.homeScore,awayScore:state.awayScore};state.events.push(ev);selectedEvent=ev;render();openStory(ev)}
 document.querySelectorAll('.event').forEach(b=>b.onclick=()=>{const t=b.dataset.event;if(!acquireActionLock('event-'+t,1200))return;if(t==='goalHome'||t==='goalAway')return openGoal(t==='goalHome'?'home':'away');b.disabled=true;setTimeout(()=>b.disabled=false,1200);const phases={start:'En juego',halftime:'Entretiempo',secondhalf:'Segundo tiempo',final:'Finalizado'},subs={start:'Rueda la pelota',halftime:'Resultado parcial',secondhalf:'Vuelve a rodar la pelota',final:'Resultado final'},icons={start:'play',halftime:'pause',secondhalf:'play',final:'flag'};state.phase=phases[t];addEvent(t,subs[t],icons[t])});
 function timerValue(){
@@ -621,7 +620,7 @@ function renderLineup(){
  $('#lineupFormation').value=lineupDraft.formation;
  $('#lineupPitch').innerHTML='<div class="pitch-lines" aria-hidden="true"><i></i></div>'+positions.map((p,i)=>{
  const current=lineupDraft.players[i]||'';
- return `<label class="lineup-slot" style="left:${p.x}%;top:${p.y}%"><span class="lineup-shirt" aria-hidden="true">${esc(state.playerNumbers?.[current]??'')}</span><select data-lineup-slot="${i}" aria-label="${esc(p.label)}"><option value="">${esc(p.label)}</option>${players.map(name=>`<option value="${esc(name)}" ${name===current?'selected':''} ${name!==current&&lineupDraft.players.includes(name)?'disabled':''}>${esc(name)}</option>`).join('')}</select></label>`
+ return `<div class="lineup-slot" style="left:${p.x}%;top:${p.y}%"><span class="lineup-shirt" aria-hidden="true">${esc(state.playerNumbers?.[current]??'')}</span><select data-lineup-slot="${i}" aria-label="${esc(p.label)}"><option value="" ${current?'':'selected'}>${current?'Quitar jugador':esc(p.label)}</option>${players.map(name=>`<option value="${esc(name)}" ${name===current?'selected':''} ${name!==current&&lineupDraft.players.includes(name)?'disabled':''}>${esc(name)}</option>`).join('')}</select>${current?`<button type="button" class="lineup-remove" data-lineup-remove="${i}" aria-label="Quitar a ${esc(current)}" title="Quitar jugador">×</button>`:''}</div>`
  }).join('');
  const count=lineupDraft.players.filter(p=>players.includes(p)).length;
  $('#lineupCount').textContent=count+'/11';
@@ -634,6 +633,12 @@ $('#openLineup').onclick=()=>{
 };
 $('#lineupFormation').onchange=e=>{
  lineupDraft.formation=e.target.value;state.lineup=JSON.parse(JSON.stringify(lineupDraft));save();renderLineup()
+};
+$('#lineupPitch').onclick=e=>{
+ const button=e.target.closest('[data-lineup-remove]');if(!button||!lineupDraft)return;
+ const index=Number(button.dataset.lineupRemove);
+ if(!Number.isInteger(index)||index<0||index>=11)return;
+ lineupDraft.players[index]='';state.lineup=JSON.parse(JSON.stringify(lineupDraft));save();renderLineup()
 };
 $('#lineupPitch').onchange=e=>{
  const select=e.target.closest('[data-lineup-slot]');if(!select)return;
