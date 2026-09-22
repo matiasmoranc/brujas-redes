@@ -46,3 +46,6 @@
 
 .player-chip{display:inline-flex;align-items:center;gap:8px;max-width:100%;flex-wrap:wrap}
 .player-chip .player-number{width:64px;min-width:64px;min-height:44px;padding:6px;text-align:center;font-size:16px;border-radius:8px}
+
+.upcoming-actions #upcomingStory{width:100%;grid-column:1/-1}
+.lineup-remove{position:absolute;right:-4px;top:-12px;width:28px;height:28px;min-height:28px;padding:0;display:grid;place-items:center;border-radius:50%;background:#331b1b;color:#ffb4b4;border:1px solid #995959;font-size:20px;line-height:1;z-index:1;touch-action:manipulation}
