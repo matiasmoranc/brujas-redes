@@ -31,3 +31,15 @@
 .events-card h2{margin-bottom:14px}.log-info strong{display:block;font-size:13px;line-height:1.25}
 
 @media(max-width:760px){.designer-grid>*{min-width:0}.designer-grid .preview-shell{width:100%;max-width:340px;margin-inline:auto;justify-self:center}.designer-grid #designerPreview{width:100%;margin-inline:auto}.designer-grid .phone{width:100%;margin-inline:auto}}
+
+.lineup-open{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;margin:0 0 12px}
+.lineup-sheet{max-height:calc(100dvh - 36px);overflow-y:auto;max-width:640px}
+.lineup-formation{margin:16px 0}.lineup-sheet small{font-size:12px;color:var(--muted);margin-left:10px}
+.lineup-pitch{position:relative;aspect-ratio:1/1.15;background:repeating-linear-gradient(0deg,#173e2c 0%,#173e2c 12.5%,#1c4933 12.5%,#1c4933 25%);border-radius:14px;isolation:isolate}
+.pitch-lines{position:absolute;inset:10px;border:1px solid #ffffff70;pointer-events:none;z-index:-1}.pitch-lines:before{content:"";position:absolute;top:50%;left:0;width:100%;border-top:1px solid #ffffff70}
+.pitch-lines:after{content:"";position:absolute;left:50%;top:50%;width:25%;aspect-ratio:1;transform:translate(-50%,-50%);border:1px solid #ffffff70;border-radius:50%}
+.pitch-lines i:before,.pitch-lines i:after{content:"";position:absolute;left:25%;width:50%;height:15%;border:1px solid #ffffff70}.pitch-lines i:before{top:0}.pitch-lines i:after{bottom:0}
+.lineup-slot{position:absolute;transform:translate(-50%,-50%);width:19%;display:flex;flex-direction:column;align-items:center;gap:4px}
+.lineup-shirt{display:grid;place-items:center;background:var(--green);color:#102015;font-weight:900;width:36px;height:34px;clip-path:polygon(23% 0,77% 0,100% 20%,87% 45%,76% 36%,76% 100%,24% 100%,24% 36%,13% 45%,0 20%);font-size:11px}
+.lineup-slot select{width:100%;min-height:44px;padding:5px 2px;border-radius:6px;text-align:center;font-size:11px;background:#0a2118;color:white;border-color:#ffffff60}
+@media(max-width:520px){.lineup-sheet{padding:14px}.lineup-slot select{font-size:10px}.lineup-pitch{aspect-ratio:1/1.3}}
