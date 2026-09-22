@@ -66,7 +66,7 @@ const uiIconShapes={
 };
 function uiIcon(name){return `<svg viewBox="0 0 24 24" aria-hidden="true">${uiIconShapes[name]||uiIconShapes.goal}</svg>`}
 $$('[data-ui-icon]').forEach(element=>element.innerHTML=uiIcon(element.dataset.uiIcon));
-const fresh={homeName:'Brujas',awayName:'',homeLogo:'',awayLogo:'',players:[],homeScore:0,awayScore:0,phase:'Partido sin iniciar',events:[],lineup:{formation:'442',players:[]},timerSeconds:0,timerRunning:false,timerStartedAt:null,matchDay:'SÁBADO',matchTime:'11:00 AM',matchPlace:'COMPLEJO MICROSULES'};
+const fresh={homeName:'Brujas',awayName:'',homeLogo:'',awayLogo:'',players:[],playerNumbers:{},homeScore:0,awayScore:0,phase:'Partido sin iniciar',events:[],lineup:{formation:'442',players:[]},timerSeconds:0,timerRunning:false,timerStartedAt:null,matchDay:'SÁBADO',matchTime:'11:00 AM',matchPlace:'COMPLEJO MICROSULES'};
 let state={...fresh,...JSON.parse(localStorage.getItem('brujasMatch')||'{}')},goalSide='home',selectedEvent=null;
 const actionLocks=new Map();
 let publishingStory=false;
@@ -78,8 +78,8 @@ function acquireActionLock(name,duration=1200){
  return true
 }
 
-const formatNames={upcoming:'Próximo partido',start:'Inicio del partido',goal:'Gol',halftime:'Entretiempo',secondhalf:'Segundo tiempo',final:'Final del partido'};
-const titleDefaults={upcoming:'PRÓXIMO PARTIDO',start:'INICIO DE PARTIDO',goal:'¡GOOOOOL!',halftime:'ENTRETIEMPO',secondhalf:'SEGUNDO TIEMPO',final:'FINAL DEL PARTIDO'};
+const formatNames={upcoming:'Próximo partido',start:'Inicio del partido',goal:'Gol',halftime:'Entretiempo',secondhalf:'Segundo tiempo',final:'Final del partido',lineup:'11 titular'};
+const titleDefaults={upcoming:'PRÓXIMO PARTIDO',start:'INICIO DE PARTIDO',goal:'¡GOOOOOL!',halftime:'ENTRETIEMPO',secondhalf:'SEGUNDO TIEMPO',final:'FINAL DEL PARTIDO',lineup:'11 TITULAR'};
 const baseElements={
  title:{x:50,y:25,size:52},line:{x:50,y:27.5,size:170},homeLogo:{x:24,y:44,size:270},center:{x:50,y:44,size:90},awayLogo:{x:76,y:44,size:270},
  homeName:{x:24,y:55,size:45},awayName:{x:76,y:55,size:45},detail:{x:50,y:62,size:39},day:{x:34,y:67,size:43},time:{x:68,y:67,size:43},place:{x:50,y:72,size:28}
@@ -98,11 +98,21 @@ const resultFormats=['halftime','secondhalf','final'];
 const resultElements=Object.fromEntries(['title','line','homeLogo','center','awayLogo','homeScore','awayScore'].map(k=>[k,goalElements[k]]));
 const finalElements={...resultElements,homeScorers:{x:25,y:63,size:28,font:'Montserrat',color:'#090909',weight:700,spacing:0}};
 
+const lineupElements={
+ title:{x:50,y:18.23,size:76,color:'#111111',weight:800},
+ homeLogo:{x:50,y:10.68,size:160},homeName:{x:50,y:22.5,size:38,color:'#ff5a00'},
+ formation:{x:50,y:25.73,size:32},awayName:{x:50,y:86.46,size:30},
+ pitch:{x:50,y:56.51,size:310,color:'#133b29'},
+ shirts:{x:50,y:50,size:96,color:'#ff6509'},
+ keeper:{x:50,y:50,size:96,color:'#b9ff42'},
+ playerLabels:{x:50,y:54.06,size:30,color:'#ffffff',weight:700},
+ jerseyNumbers:{x:50,y:50.16,size:23,color:'#101810',weight:800}
+};
 const formatTweaks={
  upcoming:{title:{y:24},line:{y:27},homeLogo:{y:43},center:{y:43},awayLogo:{y:43},homeName:{y:55},awayName:{y:55}},
  start:{},goal:{},halftime:{},secondhalf:{},final:{}
 };
-function makeDefaults(){const o={};Object.keys(formatNames).forEach(f=>{o[f]={title:titleDefaults[f],elements:JSON.parse(JSON.stringify(baseElements))};Object.entries(formatTweaks[f]||{}).forEach(([k,v])=>Object.assign(o[f].elements[k],v))});o.goal={title:'PRIMER TIEMPO',layoutVersion:2,elements:JSON.parse(JSON.stringify(goalElements))};resultFormats.forEach(f=>o[f]={title:titleDefaults[f],layoutVersion:2,elements:JSON.parse(JSON.stringify(f==='final'?finalElements:resultElements))});return o}
+function makeDefaults(){const o={};Object.keys(formatNames).forEach(f=>{o[f]={title:titleDefaults[f],elements:JSON.parse(JSON.stringify(baseElements))};Object.entries(formatTweaks[f]||{}).forEach(([k,v])=>Object.assign(o[f].elements[k],v))});o.goal={title:'PRIMER TIEMPO',layoutVersion:2,elements:JSON.parse(JSON.stringify(goalElements))};resultFormats.forEach(f=>o[f]={title:titleDefaults[f],layoutVersion:2,elements:JSON.parse(JSON.stringify(f==='final'?finalElements:resultElements))});o.lineup={title:'11 TITULAR',elements:JSON.parse(JSON.stringify(lineupElements))};return o}
 let formats={...makeDefaults(),...JSON.parse(localStorage.getItem('brujasFormats')||'{}')};
 const defaultColor=k=>k==='line'||k==='homeName'?'#ff5a00':'#090909',defaultWeight=k=>k==='title'||k==='place'?400:(k==='homeName'||k==='awayName'||k==='center'?900:700);
 function hydrateFormat(f){
@@ -114,7 +124,7 @@ function hydrateFormat(f){
   const custom=Object.fromEntries(Object.entries(formats[f].elements||{}).filter(([k])=>k.startsWith('custom')));
   formats[f]={title:titleDefaults[f],layoutVersion:2,elements:{...JSON.parse(JSON.stringify(resultElements)),...custom}}
  }else{
-  const defaults=f==='goal'?goalElements:(f==='final'?finalElements:(resultFormats.includes(f)?resultElements:baseElements));
+  const defaults=f==='lineup'?lineupElements:f==='goal'?goalElements:(f==='final'?finalElements:(resultFormats.includes(f)?resultElements:baseElements));
   formats[f].elements={...JSON.parse(JSON.stringify(defaults)),...formats[f].elements}
  }
  Object.entries(formats[f].elements).forEach(([k,e])=>{e.font=e.font||'Arial';e.color=e.color||defaultColor(k);e.weight=e.weight||defaultWeight(k);e.spacing=e.spacing??0;if(k==='line'||e.type==='line')e.height=e.height||6})
@@ -128,12 +138,12 @@ let teams=JSON.parse(localStorage.getItem('brujasTeams')||'[]'),editingTeamId=nu
 if(!Object.keys(savedDesigns).length){const names=new Set;Object.values(oldPresets).forEach(group=>Object.keys(group||{}).forEach(n=>names.add(n)));names.forEach(name=>{savedDesigns[name]={formats:{},syncGeometry:{}};Object.keys(formatNames).forEach(f=>savedDesigns[name].formats[f]=JSON.parse(JSON.stringify(oldPresets[f]?.[name]||makeDefaults()[f]))) });activeDesign=Object.values(oldActive).find(n=>savedDesigns[n])||''}
 Object.values(savedDesigns).forEach(d=>d.syncGeometry=d.syncGeometry||{});
 let editFormat='upcoming',editElement='title',floatingOpen=false;
-const applicable={upcoming:['title','line','homeLogo','center','awayLogo','homeName','awayName','day','time','place'],start:['title','line','homeLogo','center','awayLogo','homeName','awayName'],goal:['title','line','homeLogo','center','awayLogo','homeScore','awayScore','minute','scorer','goalText'],halftime:['title','line','homeLogo','center','awayLogo','homeScore','awayScore'],secondhalf:['title','line','homeLogo','center','awayLogo','homeScore','awayScore'],final:['title','line','homeLogo','center','awayLogo','homeScore','awayScore','homeScorers']};
-const elementNames={title:'Título',line:'Línea naranja',homeLogo:'Escudo local',center:'VS / marcador',awayLogo:'Escudo visitante',homeName:'Nombre local',awayName:'Nombre visitante',detail:'Detalle',homeScore:'Goles local',awayScore:'Goles visitante',minute:'Minuto',scorer:'Goleador local',goalText:'Texto GOOOL',homeScorers:'Goleadores del local',day:'Día',time:'Hora',place:'Lugar'};
+const applicable={lineup:Object.keys(lineupElements),upcoming:['title','line','homeLogo','center','awayLogo','homeName','awayName','day','time','place'],start:['title','line','homeLogo','center','awayLogo','homeName','awayName'],goal:['title','line','homeLogo','center','awayLogo','homeScore','awayScore','minute','scorer','goalText'],halftime:['title','line','homeLogo','center','awayLogo','homeScore','awayScore'],secondhalf:['title','line','homeLogo','center','awayLogo','homeScore','awayScore'],final:['title','line','homeLogo','center','awayLogo','homeScore','awayScore','homeScorers']};
+const elementNames={formation:'Formación',pitch:'Cancha',shirts:'Camisetas',keeper:'Camiseta del arquero',playerLabels:'Nombres de jugadores',jerseyNumbers:'Dorsales',title:'Título',line:'Línea naranja',homeLogo:'Escudo local',center:'VS / marcador',awayLogo:'Escudo visitante',homeName:'Nombre local',awayName:'Nombre visitante',detail:'Detalle',homeScore:'Goles local',awayScore:'Goles visitante',minute:'Minuto',scorer:'Goleador local',goalText:'Texto GOOOL',homeScorers:'Goleadores del local',day:'Día',time:'Hora',place:'Lugar'};
 const applicableFor=f=>[...applicable[f],...Object.keys(formats[f].elements).filter(k=>k.startsWith('custom'))];
 const save=()=>{localStorage.setItem('brujasMatch',JSON.stringify(state));localStorage.setItem('brujasFormats',JSON.stringify(formats));localStorage.setItem('brujasPalette',JSON.stringify(palette));localStorage.setItem('brujasDesigns',JSON.stringify(savedDesigns));localStorage.setItem('brujasActiveDesign',activeDesign);localStorage.setItem('brujasTeams',JSON.stringify(teams));window.queueBrujasCloudSave?.()};
 const esc=s=>String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-const sampleEvent=f=>({type:f,title:titleDefaults[f],homeScore:f==='start'||f==='upcoming'?0:2,awayScore:f==='start'||f==='upcoming'?0:1,scorer:f==='goal'?'JUGADOR BRUJAS':'',minute:f==='goal'?'37':'',side:f==='goal'?'home':'',icon:'●'});
+const sampleEvent=f=>f==='lineup'?lineupPreviewEvent():({type:f,title:titleDefaults[f],homeScore:f==='start'||f==='upcoming'?0:2,awayScore:f==='start'||f==='upcoming'?0:1,scorer:f==='goal'?'JUGADOR BRUJAS':'',minute:f==='goal'?'37':'',side:f==='goal'?'home':'',icon:'●'});
 function itemStyle(k,c){const e=c.elements[k];return `left:${e.x}%;top:${e.y}%;font-size:${e.size/10.8}cqw;color:${e.color};font-family:'${e.font}',sans-serif;font-weight:${e.weight};letter-spacing:${e.spacing/10.8}cqw`}
 const editClass=(k,on)=>on?` editable ${k===editElement?'selected':''}`:'';
 function logoHTML(src,k,c,on=false){const e=c.elements[k],sty=`left:${e.x}%;top:${e.y}%;width:${e.size/10.8}cqw;height:${e.size/10.8}cqw`,at=on?` data-element="${k}"`:'';return src?`<img class="story-item${editClass(k,on)}" ${at} style="${sty};object-fit:contain" src="${src}" alt="">`:`<div class="story-item placeholder-logo${editClass(k,on)}" ${at} style="${sty}">ESCUDO</div>`}
@@ -162,7 +172,7 @@ function storyIcon(type){
   :`<svg ${common}><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>`
 }
 function storyHTML(ev,interactive=false){
- if(ev.type==='lineup')return '<div role="status">Preparando 11 titular…</div>';
+ if(ev.type==='lineup')return lineupEditorHTML(ev,interactive);
  const f=formatNames[ev.type]?ev.type:'start',c=formats[f],eventScore=scoreForEvent(ev),score=`${eventScore.home}–${eventScore.away}`,mid=(f==='start'||f==='upcoming')?'VS':score,isScoreboard=f==='goal'||resultFormats.includes(f);
  const heading=f==='goal'?goalPeriod(ev):c.title;
  let h=`<div class="story-item story-title${editClass('title',interactive)}" data-element="${interactive?'title':''}" style="${itemStyle('title',c)}">${esc(heading)}</div><div class="story-item story-line${editClass('line',interactive)}" data-element="${interactive?'line':''}" style="left:${c.elements.line.x}%;top:${c.elements.line.y}%;width:${c.elements.line.size/10.8}cqw;height:${c.elements.line.height/10.8}cqw;background:${c.elements.line.color}"></div>`;
@@ -191,7 +201,7 @@ function placeholder(){return 'data:image/svg+xml,'+encodeURIComponent('<svg xml
 function render(){
  ['homeName','awayName','matchDay','matchTime','matchPlace'].forEach(id=>$('#'+id).value=state[id]||'');
  $('#homeThumb').src=state.homeLogo||placeholder();$('#awayThumb').src=state.awayLogo||placeholder();
- $('#playerList').innerHTML=state.players.map((p,i)=>`<span class="chip">${esc(p)} <button data-remove="${i}">×</button></span>`).join('')||'<span class="sub">Todavía no agregaste jugadores.</span>';
+ $('#playerList').innerHTML=state.players.map((p,i)=>`<span class="chip player-chip">${esc(p)} <input class="player-number" data-player-number="${i}" type="number" inputmode="numeric" min="0" max="99" step="1" placeholder="Nº" aria-label="Dorsal de ${esc(p)}" value="${esc(state.playerNumbers?.[p]??'')}"><button data-remove="${i}" aria-label="Quitar ${esc(p)}">×</button></span>`).join('')||'<span class="sub">Todavía no agregaste jugadores.</span>';
  $('#setupStory').innerHTML=storyHTML(sampleEvent('upcoming'));
  $('#liveHomeName').textContent=state.homeName||'Local';$('#liveAwayName').textContent=state.awayName||'Visitante';
  $('#liveHomeLogo').innerHTML=state.homeLogo?`<img class="crest" src="${state.homeLogo}">`:'<div class="crest-fallback">LOCAL</div>';$('#liveAwayLogo').innerHTML=state.awayLogo?`<img class="crest" src="${state.awayLogo}">`:'<div class="crest-fallback">VISITA</div>';
@@ -236,6 +246,15 @@ $('#saveTeam').onclick=()=>{const name=$('#teamName').value.trim();if(!name)retu
 $('#cancelTeamEdit').onclick=resetTeamForm;
 $('#teamLibrary').onclick=e=>{const b=e.target.closest('[data-team-action]');if(!b)return;const t=teams.find(x=>x.id===b.dataset.id);if(!t)return;if(b.dataset.teamAction==='home'||b.dataset.teamAction==='away'){useTeam(t.id,b.dataset.teamAction);switchView('setup')}else if(b.dataset.teamAction==='edit'){editingTeamId=t.id;teamLogoData=t.logo;$('#teamName').value=t.name;$('#teamThumb').src=t.logo;$('#teamFormTitle').textContent='Editar equipo';$('#saveTeam').textContent='Guardar cambios';$('#cancelTeamEdit').classList.remove('hidden');scrollTo({top:0,behavior:'smooth'})}else if(b.dataset.teamAction==='delete'){appConfirm('¿Eliminar '+t.name+'?',()=>{teams=teams.filter(x=>x.id!==t.id);save();render();toast('Equipo eliminado')})}};
 
+$('#playerList').onchange=e=>{
+ const index=e.target.dataset.playerNumber;if(index===undefined)return;
+ const name=state.players[Number(index)];if(!name)return;
+ const value=e.target.value.trim();
+ if(value!==''&&(!Number.isInteger(Number(value))||Number(value)<0||Number(value)>99)){toast('El dorsal debe estar entre 0 y 99');e.target.value=state.playerNumbers?.[name]??'';return}
+ state.playerNumbers=state.playerNumbers||{};
+ if(value==='')delete state.playerNumbers[name];else state.playerNumbers[name]=String(Number(value));
+ e.target.value=state.playerNumbers[name]??'';save();renderDesigner()
+};
 function addPlayer(){const p=$('#playerInput').value.trim();if(!p)return;state.players.push(p);$('#playerInput').value='';render()}
 $('#addPlayer').onclick=addPlayer;$('#playerInput').onkeydown=e=>{if(e.key==='Enter')addPlayer()};$('#playerList').onclick=e=>{if(e.target.dataset.remove!==undefined){state.players.splice(+e.target.dataset.remove,1);render()}};
 $('#upcomingStory').onclick=()=>{if(!state.awayName.trim()||!state.matchDay.trim()||!state.matchTime.trim()||!state.matchPlace.trim())return toast('Completá rival, día, hora y lugar');openStory(sampleEvent('upcoming'))};
@@ -342,7 +361,7 @@ function renderDesigner(){
  $('#customTitle').value=formats[editFormat].title;const e=formats[editFormat].elements[editElement];
  if(!$('#fontSelect').options.length)$('#fontSelect').innerHTML=fonts.map(f=>`<option value="${f}" style="font-family:'${f}'">${f}</option>`).join('');
  const isCustom=editElement.startsWith('custom'),isLine=editElement==='line'||e.type==='line';$('#customContentField').classList.toggle('hidden',!isCustom||isLine);$('#customContent').value=e.content||'';$('#deleteElement').disabled=!isCustom;$('#applyGeometryAll').disabled=isCustom;$('#applyGeometryAll').checked=!isCustom&&!!savedDesigns[activeDesign].syncGeometry[editElement];
- $('#posX').value=e.x;$('#posY').value=e.y;$('#elementSize').value=e.size;$('#posXOut').value=e.x+'%';$('#posYOut').value=e.y+'%';$('#sizeOut').value=e.size+'px';$('#sizeLabel').textContent=isLine?'Ancho de línea':(editElement.includes('Logo')?'Tamaño del escudo':'Tamaño del texto');$('#lineHeightRow').classList.toggle('hidden',!isLine);$('#lineHeight').value=e.height||6;$('#lineHeightOut').value=(e.height||6)+'px';$('#fontSelect').value=e.font;$('#fontSelect').disabled=isLine||editElement.includes('Logo');$('#boldToggle').checked=e.weight>=700;$('#boldToggle').disabled=isLine||editElement.includes('Logo');$('#boldOut').value=e.weight>=700?'Sí':'No';$('#letterSpacing').value=e.spacing||0;$('#letterSpacing').disabled=isLine||editElement.includes('Logo');$('#spacingOut').value=(e.spacing||0)+'px';$('#colorPicker').value=e.color;renderPalette();
+ $('#posX').value=e.x;$('#posY').value=e.y;$('#elementSize').value=e.size;$('#posXOut').value=e.x+'%';$('#posYOut').value=e.y+'%';$('#sizeOut').value=e.size+'px';$('#sizeLabel').textContent=(editFormat==='lineup'&&['pitch','shirts','keeper'].includes(editElement))?'Tamaño':isLine?'Ancho de línea':(editElement.includes('Logo')?'Tamaño del escudo':'Tamaño del texto');$('#lineHeightRow').classList.toggle('hidden',!isLine);$('#lineHeight').value=e.height||6;$('#lineHeightOut').value=(e.height||6)+'px';$('#fontSelect').value=e.font;$('#fontSelect').disabled=isLine||editElement.includes('Logo');$('#boldToggle').checked=e.weight>=700;$('#boldToggle').disabled=isLine||editElement.includes('Logo');$('#boldOut').value=e.weight>=700?'Sí':'No';$('#letterSpacing').value=e.spacing||0;$('#letterSpacing').disabled=isLine||editElement.includes('Logo');$('#spacingOut').value=(e.spacing||0)+'px';$('#colorPicker').value=e.color;renderPalette();
  const designer=$('#designerStory');
  designer.classList.add('canvas-editor');
  designer.innerHTML='<img class="editor-canvas-image" alt="Vista previa exacta">'+storyHTML(sampleEvent(editFormat),true);
@@ -386,7 +405,7 @@ $('#palette').onclick=e=>{if(e.target.dataset.color){$('#colorPicker').value=e.t
 $('#colorPicker').oninput=renderPalette;
 $('#addColor').onclick=()=>{const c=$('#colorPicker').value.toLowerCase();if(!palette.includes(c))palette.push(c);save();renderPalette();toast('Color guardado')};
 $('#applyColor').onclick=()=>{const scope=$('#colorScope').value,color=$('#colorPicker').value;if(scope==='element')formats[editFormat].elements[editElement].color=color;else targets(scope,true).forEach(x=>x.color=color);save();renderDesigner();toast('Color aplicado')};
-$('#saveFormat').onclick=()=>{if(!activeDesign||!savedDesigns[activeDesign])return toast('Seleccioná un diseño guardado');savedDesigns[activeDesign].formats=JSON.parse(JSON.stringify(formats));save();render();toast('Diseño completo guardado')};$('#resetFormat').onclick=()=>{const format=editFormat;appConfirm('¿Restaurar este tipo de historia al diseño original?',()=>{formats[format]=makeDefaults()[format];Object.entries(formats[format].elements).forEach(([k,e])=>{e.font='Arial';e.color=defaultColor(k);e.weight=defaultWeight(k);e.spacing=0;if(k==='line')e.height=6});render();toast('Tipo de historia restaurado')})};
+$('#saveFormat').onclick=()=>{if(!activeDesign||!savedDesigns[activeDesign])return toast('Seleccioná un diseño guardado');savedDesigns[activeDesign].formats=JSON.parse(JSON.stringify(formats));save();render();toast('Diseño completo guardado')};$('#resetFormat').onclick=()=>{const format=editFormat;appConfirm('¿Restaurar este tipo de historia al diseño original?',()=>{formats[format]=makeDefaults()[format];Object.entries(formats[format].elements).forEach(([k,e])=>{e.font=e.font||'Arial';e.color=e.color||defaultColor(k);e.weight=e.weight||defaultWeight(k);e.spacing=e.spacing??0;if(k==='line')e.height=6});render();toast('Tipo de historia restaurado')})};
 const imgLoad=src=>new Promise(ok=>{if(!src)return ok(null);const i=new Image;i.onload=()=>ok(i);i.onerror=()=>ok(null);i.src=src});
 function drawContain(ctx,img,x,y,size){const r=Math.min(size/img.width,size/img.height),w=img.width*r,h=img.height*r;ctx.drawImage(img,x-w/2,y-h/2,w,h)}
 function drawText(ctx,text,e){ctx.fillStyle=e.color;ctx.font=`${e.weight||700} ${e.size}px "${e.font}"`;ctx.letterSpacing=(e.spacing||0)+'px';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(text,e.x*10.8,e.y*19.2);ctx.letterSpacing='0px'}
@@ -512,7 +531,7 @@ $('#confirmPublish').onclick=async()=>{
   toast(error.message||'No se pudo publicar en Instagram')
  }finally{publishingStory=false;button.disabled=false;button.textContent=original}
 };
-const configStateKeys=['homeName','awayName','homeLogo','awayLogo','players','matchDay','matchTime','matchPlace'];
+const configStateKeys=['homeName','awayName','homeLogo','awayLogo','players','playerNumbers','matchDay','matchTime','matchPlace'];
 const liveStateKeys=['homeScore','awayScore','phase','events','lineup','timerSeconds','timerRunning','timerStartedAt'];
 const pickState=keys=>Object.fromEntries(keys.map(key=>[key,state[key]]));
 window.getBrujasCloudSections=()=>({
@@ -602,7 +621,7 @@ function renderLineup(){
  $('#lineupFormation').value=lineupDraft.formation;
  $('#lineupPitch').innerHTML='<div class="pitch-lines" aria-hidden="true"><i></i></div>'+positions.map((p,i)=>{
  const current=lineupDraft.players[i]||'';
- return `<label class="lineup-slot" style="left:${p.x}%;top:${p.y}%"><span class="lineup-shirt" aria-hidden="true">${i===0?'ARQ':i+1}</span><select data-lineup-slot="${i}" aria-label="${esc(p.label)}"><option value="">${esc(p.label)}</option>${players.map(name=>`<option value="${esc(name)}" ${name===current?'selected':''} ${name!==current&&lineupDraft.players.includes(name)?'disabled':''}>${esc(name)}</option>`).join('')}</select></label>`
+ return `<label class="lineup-slot" style="left:${p.x}%;top:${p.y}%"><span class="lineup-shirt" aria-hidden="true">${esc(state.playerNumbers?.[current]??'')}</span><select data-lineup-slot="${i}" aria-label="${esc(p.label)}"><option value="">${esc(p.label)}</option>${players.map(name=>`<option value="${esc(name)}" ${name===current?'selected':''} ${name!==current&&lineupDraft.players.includes(name)?'disabled':''}>${esc(name)}</option>`).join('')}</select></label>`
  }).join('');
  const count=lineupDraft.players.filter(p=>players.includes(p)).length;
  $('#lineupCount').textContent=count+'/11';
@@ -625,43 +644,64 @@ $('#lineupPitch').onchange=e=>{
 $('#createLineup').onclick=()=>{
  if(lineupDraft.players.length!==11||lineupDraft.players.some(p=>!p||!state.players.includes(p))||new Set(lineupDraft.players).size!==11)return toast('Elegí 11 jugadores diferentes');
  if(!acquireActionLock('lineup',1200))return;
- const ev={type:'lineup',title:'11 TITULAR',time:Date.now(),formation:lineupDraft.formation,players:[...lineupDraft.players],homeName:state.homeName,awayName:state.awayName,homeLogo:state.homeLogo};
+ const ev={type:'lineup',title:'11 TITULAR',time:Date.now(),formation:lineupDraft.formation,players:[...lineupDraft.players],numbers:lineupDraft.players.map(name=>state.playerNumbers?.[name]??''),homeName:state.homeName,awayName:state.awayName,homeLogo:state.homeLogo};
  state.lineup=JSON.parse(JSON.stringify(lineupDraft));state.events.push(ev);closeModals();render();openStory(ev)
 };
+
+function lineupPreviewEvent(){
+ const formation=state.lineup?.formation||'442';
+ const players=Array.from({length:11},(_,i)=>state.lineup?.players?.[i]||state.players[i]||'Jugador '+(i+1));
+ return {type:'lineup',formation,players,numbers:players.map(p=>state.playerNumbers?.[p]??''),homeName:state.homeName,awayName:state.awayName,homeLogo:state.homeLogo}
+}
+function lineupEditorHTML(ev,interactive){
+ const c=formats.lineup;
+ let html=applicableFor('lineup').map(k=>{
+  if(k==='homeLogo')return logoHTML(ev.homeLogo,k,c,interactive);
+  const e=c.elements[k];
+  const label=k==='title'?c.title:k==='homeName'?ev.homeName:k==='awayName'?ev.awayName:k==='formation'?ev.formation:e.content||elementNames[k]||'Texto';
+  return '<div class="story-item'+editClass(k,interactive)+'" data-element="'+k+'" style="'+itemStyle(k,c)+'">'+esc(label)+'</div>'
+ }).join('');
+ if(interactive&&floatingOpen)html+=floatingEditor(c);
+ return html
+}
 async function buildLineupImage(event){
- const ev=JSON.parse(JSON.stringify(event)),canvas=document.createElement('canvas');canvas.width=1080;canvas.height=1920;
+ const ev=JSON.parse(JSON.stringify(event)),cfg=JSON.parse(JSON.stringify(formats.lineup)),e=cfg.elements;
+ const canvas=document.createElement('canvas');canvas.width=1080;canvas.height=1920;
  const ctx=canvas.getContext('2d'),[base,logo]=await Promise.all([imgLoad('assets/story-base.jpg'),imgLoad(ev.homeLogo)]);
+ await Promise.all(Object.values(e).filter(el=>el.font).map(el=>document.fonts.load((el.weight||700)+' '+el.size+'px "'+el.font+'"').catch(()=>null)));
  ctx.fillStyle='#f5f5f2';ctx.fillRect(0,0,1080,1920);if(base)ctx.drawImage(base,0,0,1080,1920);
- function textFit(text,x,y,size,width,color='#111',weight=800){
-  ctx.fillStyle=color;ctx.textAlign='center';ctx.textBaseline='middle';
-  let fontSize=size;ctx.font=weight+' '+fontSize+'px Arial';
-  while(ctx.measureText(text).width>width&&fontSize>14){fontSize--;ctx.font=weight+' '+fontSize+'px Arial'}
-  ctx.fillText(text,x,y,width)
- }
- if(logo)drawContain(ctx,logo,540,205,160);
- textFit('11 TITULAR',540,350,76,870);
- textFit((ev.homeName||'LOCAL').toUpperCase(),540,432,38,850,'#ff5a00');
- textFit(ev.formation.split('').join('–'),540,494,32,800);
- const left=75,top=570,w=930,h=1030;
- ctx.fillStyle='#133b29';ctx.fillRect(left,top,w,h);
- for(let i=0;i<8;i++){ctx.fillStyle=i%2?'#ffffff04':'#ffffff0c';ctx.fillRect(left,top+i*h/8,w,h/8)}
- ctx.strokeStyle='#c6dfca';ctx.lineWidth=3;
- ctx.strokeRect(left+18,top+18,w-36,h-36);
- ctx.beginPath();ctx.moveTo(left+18,top+h/2);ctx.lineTo(left+w-18,top+h/2);ctx.stroke();
- ctx.beginPath();ctx.arc(540,top+h/2,110,0,Math.PI*2);ctx.stroke();
- ctx.strokeRect(330,top+18,420,145);ctx.strokeRect(425,top+18,230,55);
- ctx.strokeRect(330,top+h-163,420,145);ctx.strokeRect(425,top+h-73,230,55);
+ const pe=e.pitch,w=pe.size*3,h=w*1030/930,left=pe.x*10.8-w/2,top=pe.y*19.2-h/2;
+ ctx.save();ctx.translate(left,top);ctx.scale(w/930,h/1030);
+ ctx.fillStyle=pe.color;ctx.fillRect(0,0,930,1030);
+ for(let i=0;i<8;i++){ctx.fillStyle=i%2?'#ffffff04':'#ffffff0c';ctx.fillRect(0,i*1030/8,930,1030/8)}
+ ctx.strokeStyle='#c6dfca';ctx.lineWidth=3;ctx.strokeRect(18,18,894,994);
+ ctx.beginPath();ctx.moveTo(18,515);ctx.lineTo(912,515);ctx.stroke();
+ ctx.beginPath();ctx.arc(465,515,110,0,Math.PI*2);ctx.stroke();
+ ctx.strokeRect(255,18,420,145);ctx.strokeRect(350,18,230,55);
+ ctx.strokeRect(255,867,420,145);ctx.strokeRect(350,957,230,55);ctx.restore();
+ if(logo)drawContain(ctx,logo,e.homeLogo.x*10.8,e.homeLogo.y*19.2,e.homeLogo.size);
+ drawText(ctx,cfg.title,e.title);drawText(ctx,(ev.homeName||'LOCAL').toUpperCase(),e.homeName);
+ drawText(ctx,ev.formation.split('').join('–'),e.formation);
+ if(ev.awayName)drawText(ctx,'VS '+ev.awayName.toUpperCase(),e.awayName);
  lineupPositions(ev.formation).forEach((p,i)=>{
-  const x=left+p.x*w/100,y=top+p.y*h/100;
-  ctx.fillStyle=i===0?'#b9ff42':'#ff6509';
-  ctx.beginPath();ctx.moveTo(x-18,y-34);ctx.lineTo(x-48,y-20);ctx.lineTo(x-36,y+2);ctx.lineTo(x-25,y-4);ctx.lineTo(x-25,y+38);ctx.lineTo(x+25,y+38);ctx.lineTo(x+25,y-4);ctx.lineTo(x+36,y+2);ctx.lineTo(x+48,y-20);ctx.lineTo(x+18,y-34);ctx.closePath();ctx.fill();
-  textFit(i===0?'ARQ':String(i+1),x,y+3,23,50,'#101810');
-  const name=ev.players[i]||'',width=ev.formation==='352'&&i>=4&&i<=8?170:210;
-  ctx.fillStyle='#092316';ctx.fillRect(x-width/2,y+46,width,64);
-  textFit(name,x,y+78,30,width-12,'#ffffff',700)
+  const anchorX=left+p.x*w/100,anchorY=top+p.y*h/100,shirt=i===0?e.keeper:e.shirts;
+  const x=anchorX+(shirt.x-50)*10.8,y=anchorY+(shirt.y-50)*19.2;
+  ctx.save();ctx.translate(x,y);ctx.scale(shirt.size/96,shirt.size/96);ctx.fillStyle=shirt.color;
+  ctx.beginPath();ctx.moveTo(-18,-34);ctx.lineTo(-48,-20);ctx.lineTo(-36,2);ctx.lineTo(-25,-4);ctx.lineTo(-25,38);ctx.lineTo(25,38);ctx.lineTo(25,-4);ctx.lineTo(36,2);ctx.lineTo(48,-20);ctx.lineTo(18,-34);ctx.closePath();ctx.fill();ctx.restore();
+  drawText(ctx,String(ev.numbers?.[i]??''),{...e.jerseyNumbers,x:x/10.8+e.jerseyNumbers.x-50,y:y/19.2+e.jerseyNumbers.y-50});
+  const nameX=x+(e.playerLabels.x-50)*10.8,nameY=y+(e.playerLabels.y-50)*19.2;
+  const name=ev.players[i]||'',maxWidth=(ev.formation==='352'&&i>=4&&i<=8?170:210)*w/930;
+  const label={...e.playerLabels,x:nameX/10.8,y:nameY/19.2};
+  ctx.font=label.weight+' '+label.size+'px "'+label.font+'"';
+  const measured=ctx.measureText(name).width+Math.max(0,name.length-1)*(label.spacing||0);
+  if(measured>maxWidth-12)label.size*=Math.max(0.15,(maxWidth-12)/measured);
+  ctx.fillStyle='#092316';ctx.fillRect(nameX-maxWidth/2,nameY-label.size*.8,maxWidth,label.size*1.6);
+  drawText(ctx,name,label)
  });
- if(ev.awayName)textFit('VS '+ev.awayName.toUpperCase(),540,1660,30,820);
+ Object.entries(e).filter(([k])=>k.startsWith('custom')).forEach(([,el])=>{
+  if(el.type==='line'){ctx.fillStyle=el.color;ctx.fillRect(el.x*10.8-el.size/2,el.y*19.2-el.height/2,el.size,el.height)}
+  else drawText(ctx,el.content||'',el)
+ });
  return {imageData:canvas.toDataURL('image/png'),type:'lineup'}
 }
-
 render();
