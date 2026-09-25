@@ -202,7 +202,7 @@ function render(){
  ['matchDay','matchTime','matchPlace'].forEach(id=>$('#'+id).value=state[id]||'');
 
  $('#playerList').innerHTML=state.players.map((p,i)=>`<span class="chip player-chip">${esc(p)} <input class="player-number" data-player-number="${i}" type="number" inputmode="numeric" min="0" max="99" step="1" placeholder="Nº" aria-label="Dorsal de ${esc(p)}" value="${esc(state.playerNumbers?.[p]??'')}"><button data-remove="${i}" aria-label="Quitar ${esc(p)}">×</button></span>`).join('')||'<span class="sub">Todavía no agregaste jugadores.</span>';
- $('#setupStory').innerHTML=storyHTML(sampleEvent('upcoming'));
+ $('#setupStory').classList.add('rendered-story');
  $('#squadCount').textContent=state.players.length+' jugadores';renderQuickCrests();queueQuickCrestPreview();
  $('#liveHomeName').textContent=state.homeName||'Local';$('#liveAwayName').textContent=state.awayName||'Visitante';
  $('#liveHomeLogo').innerHTML=state.homeLogo?`<img class="crest" src="${state.homeLogo}">`:'<div class="crest-fallback">LOCAL</div>';$('#liveAwayLogo').innerHTML=state.awayLogo?`<img class="crest" src="${state.awayLogo}">`:'<div class="crest-fallback">VISITA</div>';
@@ -716,7 +716,7 @@ function renderQuickCrests(){
  const element=formats.upcoming.elements[$('#quickCrestSide').value];
  ['size','x','y'].forEach(key=>{
   $('#quickCrest-'+key).value=element[key];
-  $('#quickCrestOut-'+key).textContent=Math.round(element[key])+(key==='size'?' px':'%')
+  $('#quickCrestOut-'+key).textContent=Number(element[key].toFixed(2))+(key==='size'?' px':'%')
  })
 }
 function queueQuickCrestPreview(){
