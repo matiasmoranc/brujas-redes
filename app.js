@@ -199,8 +199,8 @@ function storyHTML(ev,interactive=false){
 }
 function placeholder(){return 'data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><rect width="80" height="80" rx="15" fill="#202a23"/><path d="M40 18l18 8v13c0 12-8 20-18 24-10-4-18-12-18-24V26z" fill="none" stroke="#718078" stroke-width="3"/></svg>')}
 function render(){
- ['homeName','awayName','matchDay','matchTime','matchPlace'].forEach(id=>$('#'+id).value=state[id]||'');
- $('#homeThumb').src=state.homeLogo||placeholder();$('#awayThumb').src=state.awayLogo||placeholder();
+ ['matchDay','matchTime','matchPlace'].forEach(id=>$('#'+id).value=state[id]||'');
+
  $('#playerList').innerHTML=state.players.map((p,i)=>`<span class="chip player-chip">${esc(p)} <input class="player-number" data-player-number="${i}" type="number" inputmode="numeric" min="0" max="99" step="1" placeholder="Nº" aria-label="Dorsal de ${esc(p)}" value="${esc(state.playerNumbers?.[p]??'')}"><button data-remove="${i}" aria-label="Quitar ${esc(p)}">×</button></span>`).join('')||'<span class="sub">Todavía no agregaste jugadores.</span>';
  $('#setupStory').innerHTML=storyHTML(sampleEvent('upcoming'));
  $('#squadCount').textContent=state.players.length+' jugadores';renderQuickCrests();queueQuickCrestPreview();
@@ -223,7 +223,7 @@ function activateDesign(name){if(name&&savedDesigns[name]){formats=JSON.parse(JS
 function renderPresetChooser(){
  $('#presetChooser').innerHTML=presetOptions();$('#presetChooser').value=savedDesigns[activeDesign]?activeDesign:''
 }
-function teamOptions(selected=''){return '<option value="">Carga manual / sin seleccionar</option>'+teams.map(t=>`<option value="${t.id}" ${t.id===selected?'selected':''}>${esc(t.name)}</option>`).join('')}
+function teamOptions(selected=''){return '<option value="">Seleccioná un equipo</option>'+teams.map(t=>`<option value="${t.id}" ${t.id===selected?'selected':''}>${esc(t.name)}</option>`).join('')}
 function selectedTeamId(side){const found=teams.find(t=>t.name===state[side+'Name']&&t.logo===state[side+'Logo']);return found?.id||''}
 function renderTeams(){
  const home=$('#homeTeamSelect'),away=$('#awayTeamSelect');
@@ -235,12 +235,12 @@ function useTeam(id,side){const t=teams.find(x=>x.id===id);if(!t)return;state[si
 function resetTeamForm(){editingTeamId=null;teamLogoData='';$('#teamName').value='';$('#teamLogo').value='';$('#teamThumb').src=placeholder();$('#teamFormTitle').textContent='Agregar equipo';$('#saveTeam').textContent='Guardar equipo';$('#cancelTeamEdit').classList.add('hidden')}
 function switchView(id){$$('.tab').forEach(x=>x.classList.toggle('active',x.dataset.view===id));$$('.view').forEach(x=>x.classList.toggle('active',x.id===id));scrollTo({top:0,behavior:'smooth'})}
 $$('.tab').forEach(b=>b.onclick=()=>switchView(b.dataset.view));
-['homeName','awayName','matchDay','matchTime','matchPlace'].forEach(id=>$('#'+id).oninput=e=>{state[id]=e.target.value;render()});
+['matchDay','matchTime','matchPlace'].forEach(id=>$('#'+id).oninput=e=>{state[id]=e.target.value;render()});
 $('#homeTeamSelect').onchange=e=>{if(e.target.value)useTeam(e.target.value,'home')};
 $('#awayTeamSelect').onchange=e=>{if(e.target.value)useTeam(e.target.value,'away')};
 function compressImage(file,done){const reader=new FileReader;reader.onload=()=>{const img=new Image;img.onload=()=>{const max=420,scale=Math.min(1,max/Math.max(img.width,img.height)),canvas=document.createElement('canvas');canvas.width=Math.round(img.width*scale);canvas.height=Math.round(img.height*scale);canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);done(canvas.toDataURL('image/webp',.82))};img.onerror=()=>done(reader.result);img.src=reader.result};reader.readAsDataURL(file)}
 function loadImage(input,key){const f=input.files[0];if(!f)return;compressImage(f,data=>{state[key]=data;render()})}
-$('#homeLogo').onchange=e=>loadImage(e.target,'homeLogo');$('#awayLogo').onchange=e=>loadImage(e.target,'awayLogo');
+
 $('#teamThumb').src=placeholder();
 $('#teamLogo').onchange=e=>{const f=e.target.files[0];if(f)compressImage(f,data=>{teamLogoData=data;$('#teamThumb').src=data})};
 $('#saveTeam').onclick=()=>{const name=$('#teamName').value.trim();if(!name)return toast('Escribí el nombre del equipo');if(!teamLogoData)return toast('Elegí un escudo');const wasEditing=!!editingTeamId;if(editingTeamId){const t=teams.find(x=>x.id===editingTeamId);if(t){t.name=name;t.logo=teamLogoData}}else teams.push({id:String(Date.now()),name,logo:teamLogoData});resetTeamForm();save();render();toast(wasEditing?'Equipo actualizado':'Equipo guardado')};
@@ -735,7 +735,7 @@ function applyQuickCrest(key,value){
  const side=$('#quickCrestSide').value,source=formats.upcoming.elements[side];
  const min=key==='size'?40:0,max=key==='size'?400:100;
  const next=Math.max(min,Math.min(max,value)),previous=source[key],delta=next-previous;
- const targets=$('#quickCrestScope').value==='all'?Object.keys(formatNames):['upcoming'];
+ const targets=Object.keys(formatNames);
  targets.forEach(f=>{
   hydrateFormat(f);const element=formats[f].elements[side];if(!element)return;
   // Preserve each story's composition while applying the same adjustment.
