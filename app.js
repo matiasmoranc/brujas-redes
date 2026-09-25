@@ -46,7 +46,7 @@ $('#changeRole').onclick=resetRole;
 });
 
 let lastTouchEnd=0;
-document.addEventListener('touchend',event=>{const now=Date.now(),rapidTimerStep=event.target.closest?.('.timer-step');if(!rapidTimerStep&&now-lastTouchEnd<320)event.preventDefault();lastTouchEnd=now},{passive:false});
+document.addEventListener('touchend',event=>{const now=Date.now(),rapidTimerStep=event.target.closest?.('.timer-step, .crest-step');if(!rapidTimerStep&&now-lastTouchEnd<320)event.preventDefault();lastTouchEnd=now},{passive:false});
 document.addEventListener('gesturestart',event=>event.preventDefault(),{passive:false});
 document.addEventListener('dblclick',event=>event.preventDefault(),{passive:false});
 
@@ -203,6 +203,7 @@ function render(){
  $('#homeThumb').src=state.homeLogo||placeholder();$('#awayThumb').src=state.awayLogo||placeholder();
  $('#playerList').innerHTML=state.players.map((p,i)=>`<span class="chip player-chip">${esc(p)} <input class="player-number" data-player-number="${i}" type="number" inputmode="numeric" min="0" max="99" step="1" placeholder="Nº" aria-label="Dorsal de ${esc(p)}" value="${esc(state.playerNumbers?.[p]??'')}"><button data-remove="${i}" aria-label="Quitar ${esc(p)}">×</button></span>`).join('')||'<span class="sub">Todavía no agregaste jugadores.</span>';
  $('#setupStory').innerHTML=storyHTML(sampleEvent('upcoming'));
+ $('#squadCount').textContent=state.players.length+' jugadores';renderQuickCrests();queueQuickCrestPreview();
  $('#liveHomeName').textContent=state.homeName||'Local';$('#liveAwayName').textContent=state.awayName||'Visitante';
  $('#liveHomeLogo').innerHTML=state.homeLogo?`<img class="crest" src="${state.homeLogo}">`:'<div class="crest-fallback">LOCAL</div>';$('#liveAwayLogo').innerHTML=state.awayLogo?`<img class="crest" src="${state.awayLogo}">`:'<div class="crest-fallback">VISITA</div>';
  state.phase=phaseFromEvents();$('#homeScore').textContent=state.homeScore;$('#awayScore').textContent=state.awayScore;$('#phase').textContent=state.phase;updateTimerDisplay();
@@ -709,4 +710,49 @@ async function buildLineupImage(event){
  });
  return {imageData:canvas.toDataURL('image/png'),type:'lineup'}
 }
+
+let quickCrestTimer=0,quickCrestRequest=0;
+function renderQuickCrests(){
+ const element=formats.upcoming.elements[$('#quickCrestSide').value];
+ ['size','x','y'].forEach(key=>{
+  $('#quickCrest-'+key).value=element[key];
+  $('#quickCrestOut-'+key).textContent=Math.round(element[key])+(key==='size'?' px':'%')
+ })
+}
+function queueQuickCrestPreview(){
+ clearTimeout(quickCrestTimer);const request=++quickCrestRequest;
+ quickCrestTimer=setTimeout(async()=>{
+  try{
+   const result=await buildStoryImage(sampleEvent('upcoming'));
+   if(request!==quickCrestRequest||!result)return;
+   $('#quickCrestPreview').src=result.imageData;
+   $('#setupStory').innerHTML='<img class="setup-exact-preview" alt="Próximo partido" src="'+result.imageData+'">'
+  }catch(error){console.error('No se pudo actualizar la vista previa de escudos',error)}
+ },80)
+}
+function applyQuickCrest(key,value){
+ if(!['size','x','y'].includes(key)||!Number.isFinite(value))return;
+ const side=$('#quickCrestSide').value,source=formats.upcoming.elements[side];
+ const min=key==='size'?40:0,max=key==='size'?400:100;
+ const next=Math.max(min,Math.min(max,value)),previous=source[key],delta=next-previous;
+ const targets=$('#quickCrestScope').value==='all'?Object.keys(formatNames):['upcoming'];
+ targets.forEach(f=>{
+  hydrateFormat(f);const element=formats[f].elements[side];if(!element)return;
+  // Preserve each story's composition while applying the same adjustment.
+  element[key]=f==='upcoming'?next:Math.max(min,Math.min(max,key==='size'?element[key]*next/Math.max(1,previous):element[key]+delta));
+  const preset=savedDesigns[activeDesign];
+  if(preset){
+   preset.formats[f]=preset.formats[f]||JSON.parse(JSON.stringify(formats[f]));
+   preset.formats[f].elements[side]=JSON.parse(JSON.stringify(element))
+  }
+ });
+ renderQuickCrests();save();queueQuickCrestPreview();renderDesigner()
+}
+$('#quickCrestSide').onchange=renderQuickCrests;
+document.querySelectorAll('[data-crest-range]').forEach(input=>input.oninput=()=>applyQuickCrest(input.dataset.crestRange,Number(input.value)));
+document.querySelectorAll('[data-crest-step]').forEach(button=>button.onclick=()=>{
+ const key=button.dataset.crestKey;
+ applyQuickCrest(key,Number(formats.upcoming.elements[$('#quickCrestSide').value][key])+Number(button.dataset.crestStep))
+});
+
 render();
