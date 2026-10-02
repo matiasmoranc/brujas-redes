@@ -406,7 +406,7 @@ $('#colorPicker').oninput=renderPalette;
 $('#addColor').onclick=()=>{const c=$('#colorPicker').value.toLowerCase();if(!palette.includes(c))palette.push(c);save();renderPalette();toast('Color guardado')};
 $('#applyColor').onclick=()=>{const scope=$('#colorScope').value,color=$('#colorPicker').value;if(scope==='element')formats[editFormat].elements[editElement].color=color;else targets(scope,true).forEach(x=>x.color=color);save();renderDesigner();toast('Color aplicado')};
 $('#saveFormat').onclick=()=>{if(!activeDesign||!savedDesigns[activeDesign])return toast('Seleccioná un diseño guardado');savedDesigns[activeDesign].formats=JSON.parse(JSON.stringify(formats));save();render();toast('Diseño completo guardado')};$('#resetFormat').onclick=()=>{const format=editFormat;appConfirm('¿Restaurar este tipo de historia al diseño original?',()=>{formats[format]=makeDefaults()[format];Object.entries(formats[format].elements).forEach(([k,e])=>{e.font=e.font||'Arial';e.color=e.color||defaultColor(k);e.weight=e.weight||defaultWeight(k);e.spacing=e.spacing??0;if(k==='line')e.height=6});render();toast('Tipo de historia restaurado')})};
-const imgLoad=src=>new Promise(ok=>{if(!src)return ok(null);const i=new Image;i.onload=()=>ok(i);i.onerror=()=>ok(null);i.src=src});
+const imgLoad=src=>new Promise(ok=>{if(!src)return ok(null);const i=new Image;if(/^https?:/.test(src))i.crossOrigin="anonymous";i.onload=()=>ok(i);i.onerror=()=>ok(null);i.src=src});
 function drawContain(ctx,img,x,y,size){const r=Math.min(size/img.width,size/img.height),w=img.width*r,h=img.height*r;ctx.drawImage(img,x-w/2,y-h/2,w,h)}
 function drawText(ctx,text,e){ctx.fillStyle=e.color;ctx.font=`${e.weight||700} ${e.size}px "${e.font}"`;ctx.letterSpacing=(e.spacing||0)+'px';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(text,e.x*10.8,e.y*19.2);ctx.letterSpacing='0px'}
 function drawMultilineText(ctx,lines,e){
@@ -766,12 +766,7 @@ async function prepareFormatBackground(file){
   const ctx=canvas.getContext('2d'),scale=Math.max(1080/img.width,1920/img.height);
   ctx.fillStyle='#ffffff';ctx.fillRect(0,0,1080,1920);
   ctx.drawImage(img,(1080-img.width*scale)/2,(1920-img.height*scale)/2,img.width*scale,img.height*scale);
-  let data;
-  for(const quality of [.88,.78,.68,.58,.48]){
-   data=canvas.toDataURL('image/webp',quality);
-   if(data.length<150000)break
-  }
-  return data
+  return canvas.toDataURL('image/webp',.9)
  }finally{URL.revokeObjectURL(url)}
 }
 function saveFormatBackground(format,design,background){
@@ -796,7 +791,14 @@ $('#formatBackground').onchange=async event=>{
  const input=event.target,file=input.files[0];if(!file)return;
  const format=editFormat,design=activeDesign;input.disabled=true;
  try{
-  const background=await prepareFormatBackground(file);
+  const password=$('#backgroundPassword').value||sessionStorage.getItem('brujasPublishPassword');
+  if(!password)throw new Error('Ingresá la contraseña de publicación para cargar el fondo');
+  const imageData=await prepareFormatBackground(file);
+  const response=await fetch(publishEndpoint,{method:'POST',headers:{'Content-Type':'application/json','x-publish-password':password},body:JSON.stringify({action:'uploadBackground',imageData})});
+  const result=await response.json();
+  if(!response.ok||!result.url)throw new Error(result.error||'Actualizá la función de Firebase para habilitar la carga de fondos');
+  sessionStorage.setItem('brujasPublishPassword',password);
+  const background=result.url;
   saveFormatBackground(format,design,background);toast('Fondo guardado')
  }catch(error){toast(error.message||'No se pudo cargar el fondo')}
  finally{input.value='';input.disabled=false}
