@@ -45,6 +45,23 @@ exports.publishInstagramStory=onRequest({
  if(!safeEqual(req.get("x-publish-password"),publishPassword.value())){
   return res.status(401).json({error:"Contraseña de publicación incorrecta"});
  }
+ if(req.body?.action==="uploadBackground"){
+  const match=String(req.body.imageData||"").match(/^data:image\/(webp|jpeg|png);base64,([A-Za-z0-9+/=]+)$/);
+  if(!match)return res.status(400).json({error:"Formato de fondo inválido"});
+  const image=Buffer.from(match[2],"base64");
+  if(!image.length||image.length>5*1024*1024)return res.status(413).json({error:"El fondo procesado supera los 5 MB"});
+  const signatures={png:image.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])),jpeg:image[0]===255&&image[1]===216&&image[2]===255,webp:image.toString("ascii",0,4)==="RIFF"&&image.toString("ascii",8,12)==="WEBP"};
+  if(!signatures[match[1]])return res.status(400).json({error:"El archivo no es una imagen válida"});
+  const bucket=getStorage().bucket(),downloadToken=crypto.randomUUID();
+  const objectName=`design-backgrounds/${crypto.randomUUID()}.${match[1]}`;
+  try{
+   await bucket.file(objectName).save(image,{resumable:false,metadata:{contentType:`image/${match[1]}`,cacheControl:"public,max-age=31536000,immutable",metadata:{firebaseStorageDownloadTokens:downloadToken}}});
+   return res.json({ok:true,url:`https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(objectName)}?alt=media&token=${downloadToken}`});
+  }catch(error){
+   console.error("Background upload failed",error);
+   return res.status(500).json({error:"No se pudo guardar el fondo"});
+  }
+ }
  const match=String(req.body?.imageData||"").match(/^data:image\/png;base64,(.+)$/);
  if(!match)return res.status(400).json({error:"La historia debe enviarse como PNG"});
  const image=Buffer.from(match[1],"base64");
