@@ -787,22 +787,37 @@ function saveFormatBackground(format,design,background){
  }
  formats=nextFormats;savedDesigns=nextDesigns;render()
 }
-$('#formatBackground').onchange=async event=>{
- const input=event.target,file=input.files[0];if(!file)return;
- const format=editFormat,design=activeDesign;input.disabled=true;
+let pendingBackgroundUpload=null;
+async function uploadSelectedBackground(){
+ if(!pendingBackgroundUpload||$('#formatBackground').disabled)return;
+ const {file,format,design}=pendingBackgroundUpload,input=$('#formatBackground');
+ const password=$('#backgroundPassword').value||sessionStorage.getItem('brujasPublishPassword');
+ if(!password){
+  $('#backgroundPassword').scrollIntoView({block:'center',behavior:'smooth'});
+  $('#backgroundPassword').focus();
+  $('#backgroundUploadStatus').textContent='Ingresá la contraseña y tocá Cargar fondo. La imagen ya está seleccionada.';
+  return;
+ }
+ input.disabled=true;$('#uploadBackground').disabled=true;
+ $('#backgroundUploadStatus').textContent='Cargando fondo…';
  try{
-  const password=$('#backgroundPassword').value||sessionStorage.getItem('brujasPublishPassword');
-  if(!password)throw new Error('Ingresá la contraseña de publicación para cargar el fondo');
   const imageData=await prepareFormatBackground(file);
   const response=await fetch(publishEndpoint,{method:'POST',headers:{'Content-Type':'application/json','x-publish-password':password},body:JSON.stringify({action:'uploadBackground',imageData})});
   const result=await response.json();
   if(!response.ok||!result.url)throw new Error(result.error||'Actualizá la función de Firebase para habilitar la carga de fondos');
   sessionStorage.setItem('brujasPublishPassword',password);
   const background=result.url;
-  saveFormatBackground(format,design,background);toast('Fondo guardado')
- }catch(error){toast(error.message||'No se pudo cargar el fondo')}
- finally{input.value='';input.disabled=false}
+  saveFormatBackground(format,design,background);pendingBackgroundUpload=null;input.value='';$('#backgroundUploadStatus').textContent='Fondo guardado';toast('Fondo guardado')
+ }catch(error){$('#backgroundUploadStatus').textContent=error.message||'No se pudo cargar el fondo';toast(error.message||'No se pudo cargar el fondo')}
+ finally{input.disabled=false;$('#uploadBackground').disabled=false}
+}
+$('#formatBackground').onchange=()=>{
+ const file=$('#formatBackground').files[0];if(!file)return;
+ pendingBackgroundUpload={file,format:editFormat,design:activeDesign};
+ uploadSelectedBackground()
 };
+$('#uploadBackground').onclick=uploadSelectedBackground;
+$('#backgroundPassword').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();uploadSelectedBackground()}};
 $('#resetBackground').onclick=()=>{
  try{saveFormatBackground(editFormat,activeDesign,'');toast('Fondo original restaurado')}
  catch(error){toast(error.message)}
