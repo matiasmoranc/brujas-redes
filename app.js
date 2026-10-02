@@ -324,8 +324,8 @@ $('#confirmGoal').onclick=()=>{const scorer=goalSide==='home'?$('#scorer').value
 async function openStory(ev){
  selectedEvent=ev;
  const preview=$('#finalStory'),modal=$('#storyModal');
- preview.classList.remove('rendered-story');
- preview.innerHTML=storyHTML(ev);
+ preview.classList.add('rendered-story');
+ preview.innerHTML='<span role="status">Generando vista previa…</span>';
  modal.classList.add('open');
  try{
   const result=await buildStoryImage(ev);
@@ -356,7 +356,7 @@ $('#confirmCancel').onclick=closeConfirm;$('#confirmClose').onclick=closeConfirm
 $('#confirmAccept').onclick=()=>{const action=pendingConfirm;closeConfirm();if(action)action()};
 function renderDesigner(){
  if(!$('#formatSelect').options.length)$('#formatSelect').innerHTML=Object.entries(formatNames).map(([k,v])=>`<option value="${k}">${v}</option>`).join('');
- $('#formatSelect').value=editFormat;$('#savedPresetSelect').innerHTML=presetOptions();const hasDesign=!!(activeDesign&&savedDesigns[activeDesign]);$('#savedPresetSelect').value=hasDesign?activeDesign:'';$('#designerControls').classList.toggle('hidden',!hasDesign);$('#designerPreview').classList.toggle('hidden',!hasDesign);$('#deletePreset').disabled=!hasDesign;$('#updatePreset').disabled=!hasDesign;if(!hasDesign)return;const els=applicableFor(editFormat);if(!els.includes(editElement))editElement=els[0];
+ $('#formatSelect').value=editFormat;$('#savedPresetSelect').innerHTML=presetOptions();const hasDesign=!!(activeDesign&&savedDesigns[activeDesign]);$('#savedPresetSelect').value=hasDesign?activeDesign:'';$('#designerControls').classList.toggle('hidden',!hasDesign);$('#designerPreview').classList.toggle('hidden',!hasDesign);$('#deletePreset').disabled=!hasDesign;$('#updatePreset').disabled=!hasDesign;if(!hasDesign)return;$('#formatBackgroundStatus').textContent=formats[editFormat].background?'Fondo personalizado':'Fondo original';$('#resetBackground').disabled=!formats[editFormat].background;const els=applicableFor(editFormat);if(!els.includes(editElement))editElement=els[0];
  $('#elementSelect').innerHTML=els.map(k=>`<option value="${k}">${elementNames[k]||((formats[editFormat].elements[k].type==='line'?'Línea':'Texto')+' agregado') }</option>`).join('');$('#elementSelect').value=editElement;
  $('#customTitle').value=formats[editFormat].title;const e=formats[editFormat].elements[editElement];
  if(!$('#fontSelect').options.length)$('#fontSelect').innerHTML=fonts.map(f=>`<option value="${f}" style="font-family:'${f}'">${f}</option>`).join('');
@@ -434,7 +434,7 @@ async function buildStoryImage(event=selectedEvent){
  const eventScore=scoreForEvent(event),periodTitle=goalPeriod(event);
  const c=document.createElement('canvas');c.width=1080;c.height=1920;
  const x=c.getContext('2d');
- const [base,hi,ai]=await Promise.all([imgLoad('assets/story-base.jpg'),imgLoad(storyState.homeLogo),imgLoad(storyState.awayLogo)]);
+ const [base,hi,ai]=await Promise.all([imgLoad(cfg.background||'assets/story-base.jpg'),imgLoad(storyState.homeLogo),imgLoad(storyState.awayLogo)]);
  x.clearRect(0,0,c.width,c.height);
  if(base)x.drawImage(base,0,0,1080,1920);else{x.fillStyle='#fff';x.fillRect(0,0,1080,1920)}
  await Promise.all(Object.values(cfg.elements).filter(e=>e.font).map(e=>document.fonts.load(`${e.weight||700} ${e.size}px "${e.font}"`).catch(()=>null)));
@@ -673,7 +673,7 @@ function lineupEditorHTML(ev,interactive){
 async function buildLineupImage(event){
  const ev=JSON.parse(JSON.stringify(event)),cfg=JSON.parse(JSON.stringify(formats.lineup)),e=cfg.elements;
  const canvas=document.createElement('canvas');canvas.width=1080;canvas.height=1920;
- const ctx=canvas.getContext('2d'),[base,logo]=await Promise.all([imgLoad('assets/story-base.jpg'),imgLoad(ev.homeLogo)]);
+ const ctx=canvas.getContext('2d'),[base,logo]=await Promise.all([imgLoad(cfg.background||'assets/story-base.jpg'),imgLoad(ev.homeLogo)]);
  await Promise.all(Object.values(e).filter(el=>el.font).map(el=>document.fonts.load((el.weight||700)+' '+el.size+'px "'+el.font+'"').catch(()=>null)));
  ctx.fillStyle='#f5f5f2';ctx.fillRect(0,0,1080,1920);if(base)ctx.drawImage(base,0,0,1080,1920);
  const pe=e.pitch,w=pe.size*3,h=w*1030/930,left=pe.x*10.8-w/2,top=pe.y*19.2-h/2;
@@ -754,5 +754,56 @@ document.querySelectorAll('[data-crest-step]').forEach(button=>button.onclick=()
  const key=button.dataset.crestKey;
  applyQuickCrest(key,Number(formats.upcoming.elements[$('#quickCrestSide').value][key])+Number(button.dataset.crestStep))
 });
+
+
+async function prepareFormatBackground(file){
+ if(!['image/jpeg','image/png','image/webp'].includes(file.type))throw new Error('Elegí una imagen JPG, PNG o WebP');
+ if(file.size>20*1024*1024)throw new Error('La imagen debe pesar menos de 20 MB');
+ const url=URL.createObjectURL(file);
+ try{
+  const img=await imgLoad(url);if(!img)throw new Error('No se pudo leer esa imagen');
+  const canvas=document.createElement('canvas');canvas.width=1080;canvas.height=1920;
+  const ctx=canvas.getContext('2d'),scale=Math.max(1080/img.width,1920/img.height);
+  ctx.fillStyle='#ffffff';ctx.fillRect(0,0,1080,1920);
+  ctx.drawImage(img,(1080-img.width*scale)/2,(1920-img.height*scale)/2,img.width*scale,img.height*scale);
+  let data;
+  for(const quality of [.88,.78,.68,.58,.48]){
+   data=canvas.toDataURL('image/webp',quality);
+   if(data.length<150000)break
+  }
+  return data
+ }finally{URL.revokeObjectURL(url)}
+}
+function saveFormatBackground(format,design,background){
+ if(activeDesign!==design||!savedDesigns[design])throw new Error('El diseño cambió. Volvé a cargar la imagen');
+ const nextFormats=JSON.parse(JSON.stringify(formats)),nextDesigns=JSON.parse(JSON.stringify(savedDesigns));
+ nextFormats[format].background=background;
+ nextDesigns[design].formats[format]=JSON.parse(JSON.stringify(nextFormats[format]));
+ const section={formats:nextFormats,palette,savedDesigns:nextDesigns,activeDesign};
+ if(new TextEncoder().encode(JSON.stringify(section)).length>900000)throw new Error('El diseño ocupa demasiado espacio. Probá con un fondo más liviano');
+ const previousFormats=formats,previousDesigns=savedDesigns;
+ try{
+  // Write larger values first so a storage failure never replaces the live design.
+  localStorage.setItem('brujasDesigns',JSON.stringify(nextDesigns));
+  localStorage.setItem('brujasFormats',JSON.stringify(nextFormats));
+ }catch(error){
+  try{localStorage.setItem('brujasDesigns',JSON.stringify(previousDesigns));localStorage.setItem('brujasFormats',JSON.stringify(previousFormats))}catch(_){}
+  throw new Error('No hay espacio para guardar el fondo en este dispositivo')
+ }
+ formats=nextFormats;savedDesigns=nextDesigns;render()
+}
+$('#formatBackground').onchange=async event=>{
+ const input=event.target,file=input.files[0];if(!file)return;
+ const format=editFormat,design=activeDesign;input.disabled=true;
+ try{
+  const background=await prepareFormatBackground(file);
+  saveFormatBackground(format,design,background);toast('Fondo guardado')
+ }catch(error){toast(error.message||'No se pudo cargar el fondo')}
+ finally{input.value='';input.disabled=false}
+};
+$('#resetBackground').onclick=()=>{
+ try{saveFormatBackground(editFormat,activeDesign,'');toast('Fondo original restaurado')}
+ catch(error){toast(error.message)}
+};
 
 render();
