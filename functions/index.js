@@ -41,9 +41,30 @@ exports.publishInstagramStory=onRequest({
  memory:"512MiB",
  maxInstances:2
 },async(req,res)=>{
+ if(req.method==="GET"&&req.query.action==="readBackground"){
+  const path=String(req.query.path||""),token=String(req.query.token||"");
+  if(!/^design-backgrounds\/[a-f0-9-]+\.(webp|jpeg|png)$/.test(path))return res.status(400).send("Invalid background");
+  try{
+   const file=getStorage().bucket().file(path),[metadata]=await file.getMetadata();
+   if(!token||!String(metadata.metadata?.firebaseStorageDownloadTokens||"").split(",").includes(token))return res.status(403).send("Forbidden");
+   const [data]=await file.download();res.set("Content-Type",metadata.contentType);res.set("Cache-Control","public,max-age=3600");return res.send(data);
+  }catch(_){return res.status(404).send("Background unavailable")}
+ }
  if(req.method!=="POST")return res.status(405).json({error:"Método no permitido"});
  if(!safeEqual(req.get("x-publish-password"),publishPassword.value())){
   return res.status(401).json({error:"Contraseña de publicación incorrecta"});
+ }
+ if(req.body?.action==="listBackgrounds"){
+  try{
+   const bucket=getStorage().bucket(),[files]=await bucket.getFiles({prefix:"design-backgrounds/"});
+   return res.json({backgrounds:files.map(file=>({path:file.name,name:file.name.split("/").pop(),url:`https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(file.name)}?alt=media&token=${file.metadata.metadata?.firebaseStorageDownloadTokens||""}`})).reverse()});
+  }catch(_){return res.status(500).json({error:"No se pudieron consultar los fondos"})}
+ }
+ if(req.body?.action==="deleteBackground"){
+  const path=String(req.body.path||"");
+  if(!/^design-backgrounds\/[a-f0-9-]+\.(webp|jpeg|png)$/.test(path))return res.status(400).json({error:"Fondo inválido"});
+  try{await getStorage().bucket().file(path).delete({ignoreNotFound:true});return res.json({ok:true})}
+  catch(_){return res.status(500).json({error:"No se pudo eliminar el fondo"})}
  }
  if(req.body?.action==="uploadBackground"){
   const match=String(req.body.imageData||"").match(/^data:image\/(webp|jpeg|png);base64,([A-Za-z0-9+/=]+)$/);
