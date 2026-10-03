@@ -433,7 +433,17 @@ $('#colorPicker').oninput=renderPalette;
 $('#addColor').onclick=()=>{const c=$('#colorPicker').value.toLowerCase();if(!palette.includes(c))palette.push(c);save();renderPalette();toast('Color guardado')};
 $('#applyColor').onclick=()=>{const scope=$('#colorScope').value,color=$('#colorPicker').value;if(scope==='element')formats[editFormat].elements[editElement].color=color;else targets(scope,true).forEach(x=>x.color=color);save();renderDesigner();toast('Color aplicado')};
 $('#saveFormat').onclick=()=>{if(!activeDesign||!savedDesigns[activeDesign])return toast('Seleccioná un diseño guardado');savedDesigns[activeDesign].formats=JSON.parse(JSON.stringify(formats));save();render();toast('Diseño completo guardado')};$('#resetFormat').onclick=()=>{const format=editFormat;appConfirm('¿Restaurar este tipo de historia al diseño original?',()=>{formats[format]=makeDefaults()[format];Object.entries(formats[format].elements).forEach(([k,e])=>{e.font=e.font||'Arial';e.color=e.color||defaultColor(k);e.weight=e.weight||defaultWeight(k);e.spacing=e.spacing??0;if(k==='line')e.height=6});render();toast('Tipo de historia restaurado')})};
-const imgLoad=src=>new Promise(ok=>{if(!src)return ok(null);const i=new Image;if(/^https?:/.test(src))i.crossOrigin="anonymous";i.onload=()=>ok(i);i.onerror=()=>ok(null);i.src=src});
+function backgroundImageSource(src){
+ try{
+  const u=new URL(src);
+  if(u.hostname==='firebasestorage.googleapis.com'){
+   const path=decodeURIComponent(u.pathname.split('/o/')[1]||'');
+   if(path.startsWith('design-backgrounds/'))return 'https://us-east1-brujas-redes.cloudfunctions.net/publishInstagramStory?action=readBackground&path='+encodeURIComponent(path)+'&token='+encodeURIComponent(u.searchParams.get('token')||'')
+  }
+ }catch(_){}
+ return src
+}
+const imgLoad=src=>new Promise(ok=>{if(!src)return ok(null);const i=new Image;if(/^https?:/.test(src))i.crossOrigin="anonymous";i.onload=()=>ok(i);i.onerror=()=>ok(null);i.src=backgroundImageSource(src)});
 function drawContain(ctx,img,x,y,size){const r=Math.min(size/img.width,size/img.height),w=img.width*r,h=img.height*r;ctx.drawImage(img,x-w/2,y-h/2,w,h)}
 function drawText(ctx,text,e){ctx.fillStyle=e.color;ctx.font=`${e.weight||700} ${e.size}px "${e.font}"`;ctx.letterSpacing=(e.spacing||0)+'px';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(text,e.x*10.8,e.y*19.2);ctx.letterSpacing='0px'}
 function drawMultilineText(ctx,lines,e){
@@ -463,6 +473,7 @@ async function buildStoryImage(event=selectedEvent){
  const x=c.getContext('2d');
  const [base,hi,ai]=await Promise.all([imgLoad(cfg.background||'assets/story-base.jpg'),imgLoad(storyState.homeLogo),imgLoad(storyState.awayLogo)]);
  x.clearRect(0,0,c.width,c.height);
+ if(cfg.background&&!base)throw new Error('No se pudo cargar el fondo. Volvé a seleccionarlo desde los fondos cargados');
  if(base)x.drawImage(base,0,0,1080,1920);else{x.fillStyle='#fff';x.fillRect(0,0,1080,1920)}
  await Promise.all(Object.values(cfg.elements).filter(e=>e.font).map(e=>document.fonts.load(`${e.weight||700} ${e.size}px "${e.font}"`).catch(()=>null)));
  drawText(x,(f==='goal'?periodTitle:cfg.title).toUpperCase(),cfg.elements.title);
@@ -702,6 +713,7 @@ async function buildLineupImage(event){
  const canvas=document.createElement('canvas');canvas.width=1080;canvas.height=1920;
  const ctx=canvas.getContext('2d'),[base,logo]=await Promise.all([imgLoad(cfg.background||'assets/story-base.jpg'),imgLoad(ev.homeLogo)]);
  await Promise.all(Object.values(e).filter(el=>el.font).map(el=>document.fonts.load((el.weight||700)+' '+el.size+'px "'+el.font+'"').catch(()=>null)));
+ if(cfg.background&&!base)throw new Error('No se pudo cargar el fondo');
  ctx.fillStyle='#f5f5f2';ctx.fillRect(0,0,1080,1920);if(base)ctx.drawImage(base,0,0,1080,1920);
  const pe=e.pitch,w=pe.size*3,h=w*1030/930,left=pe.x*10.8-w/2,top=pe.y*19.2-h/2;
  ctx.save();ctx.translate(left,top);ctx.scale(w/930,h/1030);
@@ -834,6 +846,7 @@ async function uploadSelectedBackground(){
   if(!response.ok||!result.url)throw new Error(result.error||'Actualizá la función de Firebase para habilitar la carga de fondos');
   sessionStorage.setItem('brujasPublishPassword',password);
   const background=result.url;
+  if(!await imgLoad(background))throw new Error('El archivo se guardó, pero no se pudo abrir. Actualizá Firebase y elegilo desde Fondos cargados');
   saveFormatBackground(format,design,background);pendingBackgroundUpload=null;input.value='';$('#backgroundUploadStatus').textContent='Fondo guardado';toast('Fondo guardado')
  }catch(error){$('#backgroundUploadStatus').textContent=error.message||'No se pudo cargar el fondo';toast(error.message||'No se pudo cargar el fondo')}
  finally{input.disabled=false;$('#uploadBackground').disabled=false}
@@ -848,6 +861,32 @@ $('#backgroundPassword').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();up
 $('#resetBackground').onclick=()=>{
  try{saveFormatBackground(editFormat,activeDesign,'');toast('Fondo original restaurado')}
  catch(error){toast(error.message)}
+};
+
+let loadedBackgrounds=[];
+async function backgroundRequest(action,extra={}){
+ const password=$('#backgroundPassword').value||sessionStorage.getItem('brujasPublishPassword');
+ if(!password){$('#backgroundPassword').focus();throw new Error('Ingresá la contraseña de publicación')}
+ const response=await fetch(publishEndpoint,{method:'POST',headers:{'Content-Type':'application/json','x-publish-password':password},body:JSON.stringify({action,...extra})});
+ const data=await response.json();if(!response.ok)throw new Error(data.error||'No se pudo completar la acción');
+ sessionStorage.setItem('brujasPublishPassword',password);return data
+}
+async function refreshBackgroundGallery(){
+ try{
+  const data=await backgroundRequest('listBackgrounds');loadedBackgrounds=data.backgrounds||[];
+  $('#backgroundGallery').innerHTML=loadedBackgrounds.map((bg,i)=>`<div class="background-card"><img src="${esc(backgroundImageSource(bg.url))}" alt="Fondo cargado" loading="lazy"><button type="button" data-background-use="${i}">Elegir</button><button type="button" class="danger" data-background-delete="${i}">Eliminar</button></div>`).join('')||'<p>No hay fondos cargados.</p>'
+ }catch(error){toast(error.message)}
+}
+$('#showBackgrounds').onclick=refreshBackgroundGallery;
+$('#backgroundGallery').onclick=async event=>{
+ const use=event.target.closest('[data-background-use]'),del=event.target.closest('[data-background-delete]');
+ if(use){const bg=loadedBackgrounds[Number(use.dataset.backgroundUse)];try{if(!await imgLoad(bg.url))throw new Error('No se pudo abrir el fondo');saveFormatBackground(editFormat,activeDesign,bg.url);toast('Fondo aplicado')}catch(error){toast(error.message)}}
+ if(del){
+  const bg=loadedBackgrounds[Number(del.dataset.backgroundDelete)];
+  const used=Object.values(savedDesigns).some(design=>Object.values(design.formats||{}).some(cfg=>cfg.background===bg.url))||Object.values(formats).some(cfg=>cfg.background===bg.url);
+  if(used)return toast('Este fondo está en uso. Cambialo en los formatos antes de eliminarlo');
+  appConfirm('¿Eliminar este fondo de los archivos cargados?',async()=>{try{await backgroundRequest('deleteBackground',{path:bg.path});await refreshBackgroundGallery();toast('Fondo eliminado')}catch(error){toast(error.message)}})
+ }
 };
 
 render();
