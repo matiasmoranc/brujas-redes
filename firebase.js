@@ -27,6 +27,22 @@ const legacySections=data=>{
   teams:{teams:Array.isArray(data?.teams)?data.teams:[]}
  }
 };
+window.persistBrujasCloudSection=async name=>{
+ if(!sectionNames.includes(name))throw new Error("Sección de datos no válida");
+ if(!cloudReady)throw new Error("La conexión con la nube todavía está cargando");
+ clearTimeout(saveTimer);saveTimer=null;
+ while(savingSections.has(name))await new Promise(resolve=>setTimeout(resolve,50));
+ const data=window.getBrujasCloudSections()[name],json=JSON.stringify(data);
+ savingSections.add(name);setStatus("Guardando diseño…");
+ try{
+  await setDoc(sectionRefs[name],{...data,updatedAt:serverTimestamp()});
+  lastCloudJson[name]=json;latestLocalJson[name]=json;dirtySections.delete(name);
+  setStatus("Sincronizado");
+ }catch(error){
+  setStatus("Error de sincronización",true);throw error
+ }finally{savingSections.delete(name)}
+ if(dirtySections.size)flushCloudSave();
+};
 window.queueBrujasCloudSave=()=>{
  if(applyingCloud)return;
  if(!cloudReady){setStatus("Cargando datos…");return}
