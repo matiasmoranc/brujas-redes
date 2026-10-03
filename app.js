@@ -69,7 +69,6 @@ function confirmAdminRole(){
 $('#confirmAdmin').onclick=confirmAdminRole;
 $('#adminPassword').onkeydown=e=>{if(e.key==='Enter')confirmAdminRole()};
 $('#changeRole').onclick=resetRole;
-if(adminSessionExpiry())enterRole('admin');
 });
 
 let lastTouchEnd=0;
