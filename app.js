@@ -823,7 +823,7 @@ function saveFormatBackground(format,design,background){
   try{localStorage.setItem('brujasDesigns',JSON.stringify(previousDesigns));localStorage.setItem('brujasFormats',JSON.stringify(previousFormats))}catch(_){}
   throw new Error('No hay espacio para guardar el fondo en este dispositivo')
  }
- formats=nextFormats;savedDesigns=nextDesigns;render()
+ formats=nextFormats;savedDesigns=nextDesigns;save();render()
 }
 let pendingBackgroundUpload=null;
 async function uploadSelectedBackground(){
