@@ -1,11 +1,34 @@
 const ADMIN_PASSWORD='redesbrujas123';
 let currentRole=null;
+const ADMIN_SESSION_KEY='brujasAdminSession',ADMIN_SESSION_DURATION=24*60*60*1000;
+let adminSessionTimer=null;
+function adminSessionExpiry(){
+ try{
+  const session=JSON.parse(localStorage.getItem(ADMIN_SESSION_KEY)||'null');
+  if(session&&Number.isFinite(session.expiresAt)&&session.expiresAt>Date.now()&&session.expiresAt<=Date.now()+ADMIN_SESSION_DURATION)return session.expiresAt;
+  localStorage.removeItem(ADMIN_SESSION_KEY)
+ }catch(_){}
+ return 0
+}
+function rememberAdminAccess(){
+ try{localStorage.setItem(ADMIN_SESSION_KEY,JSON.stringify({expiresAt:Date.now()+ADMIN_SESSION_DURATION}))}catch(_){}
+}
+function scheduleAdminExpiry(){
+ clearTimeout(adminSessionTimer);
+ const expiresAt=adminSessionExpiry();
+ if(expiresAt)adminSessionTimer=setTimeout(()=>{if(currentRole==='admin')resetRole()},Math.max(0,expiresAt-Date.now()))
+}
+document.addEventListener('visibilitychange',()=>{
+ if(!document.hidden&&currentRole==='admin'&&!adminSessionExpiry())resetRole()
+});
+
 function showRoleView(view){
   $$('.view').forEach(v=>v.classList.toggle('active',v.id===view));
   $$('.tab').forEach(t=>t.classList.toggle('active',t.dataset.view===view))
 }
 function enterRole(role){
   currentRole=role;
+  if(role==='admin')scheduleAdminExpiry();
   const isAdmin=role==='admin';
   $$('[data-admin-only]').forEach(el=>el.classList.toggle('hidden',!isAdmin));
   $('#roleBadge').textContent=isAdmin?'Administrador':'Operador';
@@ -28,6 +51,7 @@ function resetRole(){
 queueMicrotask(()=>{
 $('#chooseOperator').onclick=()=>enterRole('operator');
 $('#chooseAdmin').onclick=()=>{
+  if(adminSessionExpiry()){enterRole('admin');return}
   $('#adminPasswordBox').classList.remove('hidden');
   $('#adminPasswordError').textContent='';
   setTimeout(()=>$('#adminPassword').focus(),30)
@@ -38,11 +62,14 @@ function confirmAdminRole(){
     $('#adminPassword').select();
     return
   }
+  rememberAdminAccess();
+  $('#adminPassword').value='';
   enterRole('admin')
 }
 $('#confirmAdmin').onclick=confirmAdminRole;
 $('#adminPassword').onkeydown=e=>{if(e.key==='Enter')confirmAdminRole()};
 $('#changeRole').onclick=resetRole;
+if(adminSessionExpiry())enterRole('admin');
 });
 
 let lastTouchEnd=0;
