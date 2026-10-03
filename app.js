@@ -807,7 +807,7 @@ async function prepareFormatBackground(file){
   return canvas.toDataURL('image/webp',.9)
  }finally{URL.revokeObjectURL(url)}
 }
-function saveFormatBackground(format,design,background){
+async function saveFormatBackground(format,design,background){
  if(activeDesign!==design||!savedDesigns[design])throw new Error('El diseño cambió. Volvé a cargar la imagen');
  const nextFormats=JSON.parse(JSON.stringify(formats)),nextDesigns=JSON.parse(JSON.stringify(savedDesigns));
  nextFormats[format].background=background;
@@ -823,7 +823,10 @@ function saveFormatBackground(format,design,background){
   try{localStorage.setItem('brujasDesigns',JSON.stringify(previousDesigns));localStorage.setItem('brujasFormats',JSON.stringify(previousFormats))}catch(_){}
   throw new Error('No hay espacio para guardar el fondo en este dispositivo')
  }
- formats=nextFormats;savedDesigns=nextDesigns;save();render()
+ formats=nextFormats;savedDesigns=nextDesigns;save();render();
+ if(!window.persistBrujasCloudSection)throw new Error('No se pudo iniciar la sincronización con Firebase');
+ try{await window.persistBrujasCloudSection('designs')}
+ catch(error){throw new Error('El fondo quedó guardado en este dispositivo, pero no se sincronizó. Revisá la conexión con la nube y volvé a aplicarlo')}
 }
 let pendingBackgroundUpload=null;
 async function uploadSelectedBackground(){
@@ -848,7 +851,7 @@ async function uploadSelectedBackground(){
   $('#backgroundAuth').classList.add('hidden');
   const background=result.url;
   if(!await imgLoad(background))throw new Error('El archivo se guardó, pero no se pudo abrir. Actualizá Firebase y elegilo desde Fondos cargados');
-  saveFormatBackground(format,design,background);pendingBackgroundUpload=null;input.value='';$('#backgroundUploadStatus').textContent='Fondo guardado';toast('Fondo guardado')
+  await saveFormatBackground(format,design,background);pendingBackgroundUpload=null;input.value='';$('#backgroundUploadStatus').textContent='Fondo guardado y sincronizado';toast('Fondo guardado y sincronizado')
  }catch(error){$('#backgroundUploadStatus').textContent=error.message||'No se pudo cargar el fondo';toast(error.message||'No se pudo cargar el fondo')}
  finally{input.disabled=false;$('#uploadBackground').disabled=false}
 }
@@ -883,7 +886,7 @@ async function refreshBackgroundGallery(){
 $('#showBackgrounds').onclick=refreshBackgroundGallery;
 $('#backgroundGallery').onclick=async event=>{
  const use=event.target.closest('[data-background-use]'),del=event.target.closest('[data-background-delete]');
- if(use){const bg=loadedBackgrounds[Number(use.dataset.backgroundUse)];try{if(!await imgLoad(bg.url))throw new Error('No se pudo abrir el fondo');saveFormatBackground(editFormat,activeDesign,bg.url);toast('Fondo aplicado')}catch(error){toast(error.message)}}
+ if(use){const bg=loadedBackgrounds[Number(use.dataset.backgroundUse)];try{if(!await imgLoad(bg.url))throw new Error('No se pudo abrir el fondo');await saveFormatBackground(editFormat,activeDesign,bg.url);toast('Fondo aplicado y sincronizado')}catch(error){toast(error.message)}}
  if(del){
   const bg=loadedBackgrounds[Number(del.dataset.backgroundDelete)];
   const used=Object.values(savedDesigns).some(design=>Object.values(design.formats||{}).some(cfg=>cfg.background===bg.url))||Object.values(formats).some(cfg=>cfg.background===bg.url);
