@@ -807,11 +807,17 @@ async function prepareFormatBackground(file){
   return canvas.toDataURL('image/webp',.9)
  }finally{URL.revokeObjectURL(url)}
 }
-async function saveFormatBackground(format,design,background){
+async function saveFormatBackground(format,design,background,allFormats=false){
  if(activeDesign!==design||!savedDesigns[design])throw new Error('El diseño cambió. Volvé a cargar la imagen');
  const nextFormats=JSON.parse(JSON.stringify(formats)),nextDesigns=JSON.parse(JSON.stringify(savedDesigns));
- nextFormats[format].background=background;
- nextDesigns[design].formats[format]=JSON.parse(JSON.stringify(nextFormats[format]));
+ const targets=allFormats?Object.keys(formatNames):[format];
+ targets.forEach(type=>{
+  nextFormats[type].background=background;
+  if(allFormats){
+   nextDesigns[design].formats[type]=nextDesigns[design].formats[type]||JSON.parse(JSON.stringify(nextFormats[type]));
+   nextDesigns[design].formats[type].background=background
+  }else nextDesigns[design].formats[type]=JSON.parse(JSON.stringify(nextFormats[type]))
+ });
  const section={formats:nextFormats,palette,savedDesigns:nextDesigns,activeDesign};
  if(new TextEncoder().encode(JSON.stringify(section)).length>900000)throw new Error('El diseño ocupa demasiado espacio. Probá con un fondo más liviano');
  const previousFormats=formats,previousDesigns=savedDesigns;
@@ -828,6 +834,15 @@ async function saveFormatBackground(format,design,background){
  try{await window.persistBrujasCloudSection('designs')}
  catch(error){throw new Error('El fondo quedó guardado en este dispositivo, pero no se sincronizó. Revisá la conexión con la nube y volvé a aplicarlo')}
 }
+$('#applyBackgroundAll').onclick=()=>{
+ const format=editFormat,design=activeDesign,background=formats[format].background||'';
+ appConfirm('¿Aplicar este fondo a todas las historias del diseño '+design+'?',async()=>{
+  const button=$('#applyBackgroundAll');button.disabled=true;
+  try{await saveFormatBackground(format,design,background,true);toast('Fondo aplicado a todas las historias')}
+  catch(error){toast(error.message)}
+  finally{button.disabled=false}
+ })
+};
 let pendingBackgroundUpload=null;
 async function uploadSelectedBackground(){
  if(!pendingBackgroundUpload||$('#formatBackground').disabled)return;
