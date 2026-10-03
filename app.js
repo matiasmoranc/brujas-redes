@@ -831,6 +831,7 @@ async function uploadSelectedBackground(){
  const {file,format,design}=pendingBackgroundUpload,input=$('#formatBackground');
  const password=$('#backgroundPassword').value||sessionStorage.getItem('brujasPublishPassword');
  if(!password){
+  $('#backgroundAuth').classList.remove('hidden');
   $('#backgroundPassword').scrollIntoView({block:'center',behavior:'smooth'});
   $('#backgroundPassword').focus();
   $('#backgroundUploadStatus').textContent='Ingresá la contraseña y tocá Cargar fondo. La imagen ya está seleccionada.';
@@ -844,6 +845,7 @@ async function uploadSelectedBackground(){
   const result=await response.json();
   if(!response.ok||!result.url)throw new Error(result.error||'Actualizá la función de Firebase para habilitar la carga de fondos');
   sessionStorage.setItem('brujasPublishPassword',password);
+  $('#backgroundAuth').classList.add('hidden');
   const background=result.url;
   if(!await imgLoad(background))throw new Error('El archivo se guardó, pero no se pudo abrir. Actualizá Firebase y elegilo desde Fondos cargados');
   saveFormatBackground(format,design,background);pendingBackgroundUpload=null;input.value='';$('#backgroundUploadStatus').textContent='Fondo guardado';toast('Fondo guardado')
@@ -855,7 +857,8 @@ $('#formatBackground').onchange=()=>{
  pendingBackgroundUpload={file,format:editFormat,design:activeDesign};
  uploadSelectedBackground()
 };
-$('#uploadBackground').onclick=uploadSelectedBackground;
+$('#chooseBackgroundFile').onclick=()=>$('#formatBackground').click();
+$('#uploadBackground').onclick=()=>pendingBackgroundUpload?uploadSelectedBackground():refreshBackgroundGallery();
 $('#backgroundPassword').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();uploadSelectedBackground()}};
 $('#resetBackground').onclick=()=>{
  try{saveFormatBackground(editFormat,activeDesign,'');toast('Fondo original restaurado')}
@@ -865,15 +868,16 @@ $('#resetBackground').onclick=()=>{
 let loadedBackgrounds=[];
 async function backgroundRequest(action,extra={}){
  const password=$('#backgroundPassword').value||sessionStorage.getItem('brujasPublishPassword');
- if(!password){$('#backgroundPassword').focus();throw new Error('Ingresá la contraseña de publicación')}
+ if(!password){$('#backgroundAuth').classList.remove('hidden');$('#backgroundPassword').focus();throw new Error('Ingresá la contraseña una vez para acceder a tus fondos')}
  const response=await fetch(publishEndpoint,{method:'POST',headers:{'Content-Type':'application/json','x-publish-password':password},body:JSON.stringify({action,...extra})});
  const data=await response.json();if(!response.ok)throw new Error(data.error||'No se pudo completar la acción');
- sessionStorage.setItem('brujasPublishPassword',password);return data
+ sessionStorage.setItem('brujasPublishPassword',password);$('#backgroundAuth').classList.add('hidden');return data
 }
 async function refreshBackgroundGallery(){
  try{
   const data=await backgroundRequest('listBackgrounds');loadedBackgrounds=data.backgrounds||[];
-  $('#backgroundGallery').innerHTML=loadedBackgrounds.map((bg,i)=>`<div class="background-card"><img src="${esc(backgroundImageSource(bg.url))}" alt="Fondo cargado" loading="lazy"><button type="button" data-background-use="${i}">Elegir</button><button type="button" class="danger" data-background-delete="${i}">Eliminar</button></div>`).join('')||'<p>No hay fondos cargados.</p>'
+  $('#backgroundGallery').classList.remove('hidden');
+  $('#backgroundGallery').innerHTML=loadedBackgrounds.map((bg,i)=>`<div class="background-card"><img src="${esc(backgroundImageSource(bg.url))}" alt="Fondo cargado" loading="lazy"><button type="button" class="primary" data-background-use="${i}">Elegir</button><button type="button" class="danger" data-background-delete="${i}">Eliminar</button></div>`).join('')||'<p>No hay fondos cargados.</p>'
  }catch(error){toast(error.message)}
 }
 $('#showBackgrounds').onclick=refreshBackgroundGallery;
